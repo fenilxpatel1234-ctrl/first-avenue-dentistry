@@ -59,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           <button 
             onClick={() => onSelectView('home')} 
-            className="flex items-center gap-3 group text-left"
+            className="flex items-center gap-3 group text-left lg:mr-auto"
           >
             <img 
               src="/logo.png" 
