@@ -46,126 +46,102 @@ function authenticateAdmin(email: string, password: string): AdminUser | null {
 // Email transporter
 const EMAIL_USER = 'fenilxpatel2642@gmail.com';
 const EMAIL_PASS = 'skww dpsl hobz stiz';
-const transporter = nodemailer.createTransport({
+const EMAIL_LOG_FILE = path.join(DATA_DIR, 'email_log.json');
+let emailTransporterReady = false;
+
+let transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  requireTLS: true,
+  port: 465,
+  secure: true,
   auth: { user: EMAIL_USER, pass: EMAIL_PASS }
 });
 
-transporter.verify().then(() => {
-  console.log('Email transporter is ready to send');
-}).catch(err => {
-  console.error('Email transporter verification FAILED:', err.message);
-});
+initTransporter();
+
+async function initTransporter() {
+  try {
+    await transporter.verify();
+    emailTransporterReady = true;
+    console.log('Email ready: smtp.gmail.com:465');
+  } catch (err1: any) {
+    console.error('SMTP 465 failed:', err1.message);
+    try {
+      transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+      });
+      await transporter.verify();
+      emailTransporterReady = true;
+      console.log('Email ready: smtp.gmail.com:587');
+    } catch (err2: any) {
+      console.error('SMTP 587 also failed:', err2.message);
+      console.error('Emails will be logged locally instead.');
+    }
+  }
+}
+
+function logEmailToFile(to: string, subject: string, body: string): void {
+  try {
+    const logs = loadJSON(EMAIL_LOG_FILE, []);
+    logs.push({ to, subject, body, timestamp: new Date().toISOString() });
+    saveJSON(EMAIL_LOG_FILE, logs);
+    console.log(`Email logged to file for ${to}`);
+  } catch {}
+}
+
+function deliverEmail(to: string, subject: string, body: string): void {
+  console.log(`Email to ${to}: [${subject}]`);
+  logEmailToFile(to, subject, body);
+
+  if (!emailTransporterReady) {
+    console.log('SMTP not available - email saved to log file only');
+    return;
+  }
+
+  transporter.sendMail({
+    from: `"First Avenue Dentistry" <${EMAIL_USER}>`,
+    to,
+    subject,
+    text: body
+  }).then(info => {
+    console.log('Email delivered:', info.messageId);
+  }).catch(err => {
+    console.error('SMTP send failed:', err.message);
+  });
+}
 
 function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
-  let subject = '';
-  let body = '';
   const patientName = `${apt.firstName} ${apt.lastName}`;
   const clinicName = 'First Avenue Dentistry';
   const clinicPhone = '(519) 207-6890';
   const clinicAddress = '308 Wellington Street, St.Thomas, ON N5R 2S9';
 
+  let subject = '';
+  let body = '';
+
   if (newStatus === 'Approved') {
     subject = `Your Appointment at ${clinicName} is Confirmed!`;
-    body = `Dear ${patientName},
-
-Your appointment at ${clinicName} has been CONFIRMED!
-
-Date: ${apt.confirmedDate || apt.preferredDate}
-Time: ${apt.confirmedTime || apt.preferredTimeSlot}
-Doctor: ${apt.assignedDoctor || apt.doctorPreference}
-Service: ${apt.serviceName}
-
-Location: ${clinicAddress}
-Phone: ${clinicPhone}
-
-Please arrive 10 minutes early for your appointment. If you need to reschedule, please contact us at least 24 hours in advance.
-
-We look forward to seeing you!
-
-Best regards,
-${clinicName} Team`;
+    body = `Dear ${patientName},\n\nYour appointment at ${clinicName} has been CONFIRMED!\n\nDate: ${apt.confirmedDate || apt.preferredDate}\nTime: ${apt.confirmedTime || apt.preferredTimeSlot}\nDoctor: ${apt.assignedDoctor || apt.doctorPreference}\nService: ${apt.serviceName}\n\nLocation: ${clinicAddress}\nPhone: ${clinicPhone}\n\nPlease arrive 10 minutes early. If you need to reschedule, please contact us at least 24 hours in advance.\n\nWe look forward to seeing you!\n\nBest regards,\n${clinicName} Team`;
   } else if (newStatus === 'Rejected') {
     subject = `Update on Your ${clinicName} Appointment Request`;
-    body = `Dear ${patientName},
-
-Unfortunately, we are unable to accommodate your appointment request for ${apt.serviceName} on ${apt.preferredDate} at ${apt.preferredTimeSlot}.
-
-${apt.adminNotes ? `Notes from our team: ${apt.adminNotes}\n\n` : ''}Please feel free to book another appointment through our website or call us at ${clinicPhone}. We'd love to find a time that works for you.
-
-Best regards,
-${clinicName} Team`;
+    body = `Dear ${patientName},\n\nUnfortunately, we are unable to accommodate your appointment request for ${apt.serviceName} on ${apt.preferredDate} at ${apt.preferredTimeSlot}.\n\n${apt.adminNotes ? `Notes from our team: ${apt.adminNotes}\n\n` : ''}Please feel free to book another appointment through our website or call us at ${clinicPhone}.\n\nBest regards,\n${clinicName} Team`;
   } else if (newStatus === 'Rescheduled') {
     subject = `Your ${clinicName} Appointment Has Been Rescheduled`;
-    body = `Dear ${patientName},
-
-Your appointment has been RESCHEDULED.
-
-New Date: ${apt.confirmedDate || apt.preferredDate}
-New Time: ${apt.confirmedTime || apt.preferredTimeSlot}
-Doctor: ${apt.assignedDoctor || apt.doctorPreference}
-Service: ${apt.serviceName}
-
-${apt.adminNotes ? `Notes: ${apt.adminNotes}\n\n` : ''}If this new time doesn't work for you, please call us at ${clinicPhone}.
-
-Best regards,
-${clinicName} Team`;
+    body = `Dear ${patientName},\n\nYour appointment has been RESCHEDULED.\n\nNew Date: ${apt.confirmedDate || apt.preferredDate}\nNew Time: ${apt.confirmedTime || apt.preferredTimeSlot}\nDoctor: ${apt.assignedDoctor || apt.doctorPreference}\nService: ${apt.serviceName}\n\n${apt.adminNotes ? `Notes: ${apt.adminNotes}\n\n` : ''}If this new time doesn't work for you, please call us at ${clinicPhone}.\n\nBest regards,\n${clinicName} Team`;
   } else {
     return;
   }
 
-  console.log(`Sending ${newStatus} email to ${apt.email}...`);
-  transporter.sendMail({
-    from: `"${clinicName}" <${EMAIL_USER}>`,
-    to: apt.email,
-    subject,
-    text: body
-  }).then(info => {
-    console.log(`Email sent successfully to ${apt.email}:`, info.messageId);
-  }).catch(err => {
-    console.error('Failed to send email to', apt.email, '-', err.message);
-  });
+  deliverEmail(apt.email, subject, body);
 }
 
-// Also send a notification when a new appointment is created
 function sendNewAppointmentNotification(apt: AppointmentRequest): void {
-  const clinicName = 'First Avenue Dentistry';
-  const body = `Dear ${apt.firstName},
+  const body = `Dear ${apt.firstName},\n\nThank you for requesting an appointment at First Avenue Dentistry!\n\nWe have received your request and our team will review it shortly.\n\nRequest Summary:\n• Name: ${apt.firstName} ${apt.lastName}\n• Email: ${apt.email}\n• Phone: ${apt.phone}\n• Preferred Date: ${apt.preferredDate}\n• Preferred Time: ${apt.preferredTimeSlot}\n• Service: ${apt.serviceName}\n${apt.notes ? `• Notes: ${apt.notes}` : ''}\n\nYou will receive another email once your appointment is confirmed.\n\nIf you have any questions, please call us at (519) 207-6890.\n\nBest regards,\nFirst Avenue Dentistry Team`;
 
-Thank you for requesting an appointment at ${clinicName}!
-
-We have received your request and our team will review it shortly.
-
-Request Summary:
-• Name: ${apt.firstName} ${apt.lastName}
-• Email: ${apt.email}
-• Phone: ${apt.phone}
-• Preferred Date: ${apt.preferredDate}
-• Preferred Time: ${apt.preferredTimeSlot}
-• Service: ${apt.serviceName}
-${apt.notes ? `• Notes: ${apt.notes}` : ''}
-
-You will receive another email once your appointment is confirmed.
-
-If you have any questions, please call us at (519) 207-6890.
-
-Best regards,
-${clinicName} Team`;
-
-  console.log(`Sending booking confirmation email to ${apt.email}...`);
-  transporter.sendMail({
-    from: `"${clinicName}" <${EMAIL_USER}>`,
-    to: apt.email,
-    subject: `We Received Your ${clinicName} Appointment Request`,
-    text: body
-  }).then(info => {
-    console.log(`Booking email sent successfully to ${apt.email}:`, info.messageId);
-  }).catch(err => {
-    console.error('Failed to send booking email to', apt.email, '-', err.message);
-  });
+  deliverEmail(apt.email, `We Received Your First Avenue Dentistry Appointment Request`, body);
 }
 
 // --- API ENDPOINTS ---
@@ -423,7 +399,7 @@ app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
 // Admin: Update own profile
 app.patch('/api/admin/profile', (req: Request, res: Response) => {
   const { name, email, currentPassword, newPassword } = req.body;
-  const admin = adminDatabase[0]; // First admin is the main user
+  const admin = adminDatabase[0];
   if (!admin) return res.status(404).json({ error: 'No admin found.' });
   if (currentPassword && admin.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect.' });
   if (name) admin.name = name;
@@ -431,6 +407,15 @@ app.patch('/api/admin/profile', (req: Request, res: Response) => {
   if (newPassword) admin.password = newPassword;
   persistAdmins();
   res.json({ success: true });
+});
+
+// Test email endpoint
+app.post('/api/admin/test-email', (req: Request, res: Response) => {
+  const { to } = req.body;
+  const target = to || 'fenilxpatel2642@gmail.com';
+  console.log('Test email requested, sending to', target);
+  deliverEmail(target, 'Test Email from First Avenue Dentistry', 'This is a test email to verify the email system is working.\n\nIf you received this, emails are being delivered successfully!\n\n- First Avenue Dentistry Server');
+  res.json({ success: true, message: `Test email sent to ${target}. Check your inbox (and spam folder).`, smtpReady: emailTransporterReady });
 });
 
 // Local FAQ responses (works without API key)
