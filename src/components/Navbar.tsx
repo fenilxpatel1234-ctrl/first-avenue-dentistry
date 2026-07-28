@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-3 group text-left"
           >
             <img 
-              src="https://static.wixstatic.com/media/2a5871_90b12290d49b45d787b58137d25fac86~mv2.png" 
+              src="https://kommodo.ai/i/ZqZNyBfg6uGb6rRFQYpz" 
               alt="First Avenue Dentistry" 
               className="w-12 h-12 object-contain"
             />
