@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img 
               src="/logo.png" 
               alt="First Avenue Dentistry" 
-              className="w-20 h-20 object-contain"
+              className="w-28 h-28 object-contain -my-4"
             />
           </button>
 
