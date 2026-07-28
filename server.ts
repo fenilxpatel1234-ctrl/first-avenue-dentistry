@@ -47,8 +47,17 @@ function authenticateAdmin(email: string, password: string): AdminUser | null {
 const EMAIL_USER = 'fenilxpatel2642@gmail.com';
 const EMAIL_PASS = 'skww dpsl hobz stiz';
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  requireTLS: true,
   auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+});
+
+transporter.verify().then(() => {
+  console.log('Email transporter is ready to send');
+}).catch(err => {
+  console.error('Email transporter verification FAILED:', err.message);
 });
 
 function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
@@ -108,13 +117,54 @@ ${clinicName} Team`;
     return;
   }
 
+  console.log(`Sending ${newStatus} email to ${apt.email}...`);
   transporter.sendMail({
     from: `"${clinicName}" <${EMAIL_USER}>`,
     to: apt.email,
     subject,
     text: body
+  }).then(info => {
+    console.log(`Email sent successfully to ${apt.email}:`, info.messageId);
   }).catch(err => {
-    console.error('Failed to send email to', apt.email, err.message);
+    console.error('Failed to send email to', apt.email, '-', err.message);
+  });
+}
+
+// Also send a notification when a new appointment is created
+function sendNewAppointmentNotification(apt: AppointmentRequest): void {
+  const clinicName = 'First Avenue Dentistry';
+  const body = `Dear ${apt.firstName},
+
+Thank you for requesting an appointment at ${clinicName}!
+
+We have received your request and our team will review it shortly.
+
+Request Summary:
+• Name: ${apt.firstName} ${apt.lastName}
+• Email: ${apt.email}
+• Phone: ${apt.phone}
+• Preferred Date: ${apt.preferredDate}
+• Preferred Time: ${apt.preferredTimeSlot}
+• Service: ${apt.serviceName}
+${apt.notes ? `• Notes: ${apt.notes}` : ''}
+
+You will receive another email once your appointment is confirmed.
+
+If you have any questions, please call us at (519) 207-6890.
+
+Best regards,
+${clinicName} Team`;
+
+  console.log(`Sending booking confirmation email to ${apt.email}...`);
+  transporter.sendMail({
+    from: `"${clinicName}" <${EMAIL_USER}>`,
+    to: apt.email,
+    subject: `We Received Your ${clinicName} Appointment Request`,
+    text: body
+  }).then(info => {
+    console.log(`Booking email sent successfully to ${apt.email}:`, info.messageId);
+  }).catch(err => {
+    console.error('Failed to send booking email to', apt.email, '-', err.message);
   });
 }
 
@@ -167,6 +217,8 @@ app.post('/api/appointments', (req: Request, res: Response) => {
 
     appointmentDatabase.unshift(newAppointment);
     persistAppointments();
+
+    sendNewAppointmentNotification(newAppointment);
 
     return res.status(201).json({
       success: true,
