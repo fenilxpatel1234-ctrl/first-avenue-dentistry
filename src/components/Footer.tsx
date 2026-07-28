@@ -21,7 +21,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectView, onOpenBooking }) =
               <img
                 src="/logo.png"
                 alt="First Avenue Dentistry"
-                className="w-14 h-14 object-contain"
+                className="w-20 h-20 object-contain"
               />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
