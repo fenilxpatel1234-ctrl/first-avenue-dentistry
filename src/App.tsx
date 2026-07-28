@@ -22,16 +22,22 @@ export default function App() {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash === 'admin' || hash === 'secure-admin-login') {
-        setCurrentView('admin');
-      }
+    const viewMap: Record<string, PageView> = {
+      'admin': 'admin', 'secure-admin-login': 'admin',
+      'home': 'home', 'book-online': 'book-online', 'emergency': 'emergency',
+      'our-team': 'our-team', 'contact-us': 'contact-us', 'blog': 'blog',
+      'legal': 'legal', 'service-detail': 'service-detail'
     };
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    const hash = window.location.hash.replace('#', '');
+    const view = viewMap[hash] || 'home';
+    setCurrentView(view);
   }, []);
+
+  useEffect(() => {
+    if (currentView === 'home' && !window.location.hash) return;
+    if (currentView === 'admin' || currentView === 'secure-admin-login') return;
+    window.location.hash = currentView;
+  }, [currentView]);
 
   const handleSelectView = (view: PageView) => {
     setCurrentView(view);

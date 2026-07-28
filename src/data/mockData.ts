@@ -325,49 +325,66 @@ export const ABOUT_VALUES = [
   }
 ];
 
-export const BLOG_POSTS = [
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  author: string;
+  date: string;
+  readTime: string;
+  excerpt: string;
+  content: string;
+  image: string;
+}
+
+export const BLOG_POSTS: BlogPost[] = [
   {
     id: "blog-1",
     title: "Understanding the Average Cost of Invisalign in Canada",
+    slug: "understanding-the-average-cost-of-invisalign-in-canada",
     category: "Orthodontics",
     author: "firstavenuedentist",
     date: "June 8, 2026",
-    readTime: "3 min read",
-    excerpt: "Invisalign has become increasingly popular in Canada as a preferred method for teeth straightening. Learn about the factors affecting costs and available payment options.",
-    content: "Invisalign has become increasingly popular in Canada as a preferred method for teeth straightening. The cost varies depending on the complexity of the case, treatment duration, and geographic location...",
-    image: "https://static.wixstatic.com/media/02c124_5e97129f6986410390e5572908fd0c01~mv2.png"
+    readTime: "4 min read",
+    excerpt: "Invisalign offers a modern alternative to traditional braces. Learn about the average cost of Invisalign in Canada, what influences the price, and how you can plan for this investment in your smile.",
+    content: "If you've been thinking about straightening your teeth but want a discreet and comfortable option, Invisalign might be the perfect choice for you. Invisalign offers a modern alternative to traditional braces, using clear aligners that are nearly invisible. But one of the biggest questions on everyone's mind is: how much does Invisalign cost in Canada?\n\nWhen it comes to Invisalign, the cost can vary quite a bit depending on several factors. On average, Invisalign treatment in Canada ranges from $3,000 to $8,000. This wide range might seem confusing at first, but it makes sense once you understand what goes into the pricing.\n\nKey factors that influence the average cost of Invisalign include the severity of your dental issues, length of treatment, location and dental clinic reputation, and any additional dental work needed.\n\nFor example, a simple case of minor teeth alignment might cost closer to $3,000, while a more complex case involving bite correction could push the price toward $8,000.\n\nInvisalign is very effective at closing gaps between teeth. Your dentist will create a custom treatment plan using 3D modeling to design a series of aligners tailored to close your gaps. Each set of aligners shifts your teeth slightly until the gaps close.\n\nTo budget for Invisalign treatment, check your dental insurance coverage, ask about flexible payment plans, consider using health spending accounts, and compare quotes from trusted dentists.",
+    image: "https://static.wixstatic.com/media/02c124_15be3807a9ef463e81a3a2b168bcec33~mv2.png"
   },
   {
     id: "blog-2",
     title: "Top Tips for Children's Dental Care Tips",
+    slug: "top-tips-for-children-s-dental-care-tips",
     category: "Children's Dentistry",
     author: "firstavenuedentist",
     date: "June 7, 2026",
     readTime: "4 min read",
-    excerpt: "Proper dental care from an early age sets the foundation for a lifetime of healthy smiles. Here are essential tips for parents.",
-    content: "Establishing good oral hygiene habits early is crucial for your child's long-term dental health...",
-    image: "https://static.wixstatic.com/media/02c124_505fb38312254e2d9c7973cdf23795ef~mv2.jpg"
+    excerpt: "Healthy teeth and gums set the foundation for a lifetime of good oral health. Here are simple, practical, and effective tips to keep your child's teeth strong and bright.",
+    content: "Taking care of your child's smile is one of the most important things you can do as a parent. When kids learn healthy habits early, they're more likely to keep those habits as adults.\n\nStart early and be consistent. Even before your baby's first tooth appears, clean their gums with a soft, damp cloth. Once teeth start coming in, use a small, soft-bristled toothbrush designed for infants. Brush twice a day, especially before bedtime.\n\nFor children under 3 years old, use a smear of fluoride toothpaste about the size of a grain of rice. For kids aged 3 to 6, a pea-sized amount is enough.\n\nMake brushing fun by turning it into a game or a song. Use colorful toothbrushes with their favorite characters or play a two-minute timer. Teach proper brushing technique - gentle circular motions covering all surfaces of the teeth.\n\nLimit sugary snacks and drinks. Sugar feeds the bacteria that cause cavities. Encourage water and healthy snacks like fruits, vegetables, and cheese instead.\n\nThe Canadian Dental Association recommends that children see a dentist by their first birthday or within six months of their first tooth coming in.",
+    image: "https://static.wixstatic.com/media/02c124_9c6dff57aa6e4791bfc89b16674d8059~mv2.png"
   },
   {
     id: "blog-3",
     title: "Transform Your Look with Cosmetic Smile Enhancements",
+    slug: "transform-your-look-with-cosmetic-smile-enhancements",
     category: "Cosmetic Dentistry",
     author: "firstavenuedentist",
     date: "May 25, 2026",
-    readTime: "3 min read",
-    excerpt: "Cosmetic dentistry offers a range of treatments to enhance your smile, from professional whitening to complete smile makeovers with veneers.",
-    content: "Your smile is one of the first things people notice about you. Cosmetic dentistry can help you achieve the smile you've always wanted...",
-    image: "https://static.wixstatic.com/media/02c124_5bb300faceb64e6883d2915a34540555~mv2.jpg"
+    readTime: "4 min read",
+    excerpt: "A smile makeover can dramatically improve your appearance and boost your confidence. Explore the options available and how to start your journey to a radiant smile.",
+    content: "A smile is one of the first things people notice about you. It can light up a room, boost your confidence, and even improve your overall appearance. Cosmetic smile enhancements are dental treatments designed to improve the appearance of your teeth and gums.\n\nCommon cosmetic smile enhancements include teeth whitening to brighten stained or dull teeth, veneers to cover imperfections like chips or gaps, dental bonding to repair minor damage, Invisalign or braces to straighten crooked teeth, and gum contouring to improve gum lines.\n\nTeeth whitening typically costs $200 to $600, veneers range from $800 to $2,500 per tooth, dental bonding is $300 to $600 per tooth, Invisalign ranges from $3,000 to $7,000, and gum contouring costs $500 to $3,000.\n\nThe process starts with scheduling a consultation, creating a personalized treatment plan, beginning treatments, and maintaining your results. Professional care ensures your treatments are safe, effective, and tailored to your unique needs.",
+    image: "https://static.wixstatic.com/media/02c124_e944377bf4a944199708bfbbbf405cef~mv2.png"
   },
   {
     id: "blog-4",
     title: "The Importance of Regular Dental Checkups",
+    slug: "the-importance-of-regular-dental-checkups",
     category: "General Dentistry",
     author: "firstavenuedentist",
     date: "May 25, 2026",
-    readTime: "3 min read",
-    excerpt: "Regular dental checkups are essential for maintaining optimal oral health and preventing serious dental problems before they develop.",
-    content: "Many people only visit the dentist when they experience pain or discomfort. However, regular checkups are crucial for preventing problems before they start...",
-    image: "https://static.wixstatic.com/media/02c124_c10d90879d644b038c00d1be31fd0a71~mv2.png"
+    readTime: "4 min read",
+    excerpt: "Regular dental checkups play a crucial role in maintaining your oral health and overall well-being. Learn why prevention is better than cure.",
+    content: "Taking care of your smile is more than just brushing and flossing at home. Regular dental checkups play a crucial role in maintaining your oral health and overall well-being.\n\nRegular dental checkups are essential because they help catch problems early. Many dental issues, like cavities or gum disease, don't show obvious symptoms at first. A dentist can spot these issues during a routine exam and treat them before they cause pain or more damage.\n\nDuring your checkup, the dentist will examine your teeth, gums, and mouth for cavities, gum inflammation, signs of oral cancer, and other issues. Professional cleaning removes plaque and tartar buildup that regular brushing can't reach.\n\nIn Canada, the price of a basic dental exam and cleaning can cost between $100 and $250. Many dental plans or insurance may cover part or all of the cost.\n\nTips for making the most of your dental checkups include being honest about your dental habits, keeping a list of questions, following your dentist's advice, and maintaining good oral hygiene at home.",
+    image: "https://static.wixstatic.com/media/02c124_bba688f957e1434eba66736a69fb6982~mv2.png"
   }
 ];
