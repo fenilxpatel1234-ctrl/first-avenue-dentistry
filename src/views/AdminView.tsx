@@ -490,29 +490,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
         </div>
       )}
 
-      {/* TAB 4: EMAIL TEMPLATES */}
-      {activeTab === 'emails' && (
-        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-6">
-            <h3 className="text-lg font-bold text-slate-900">Automated Patient Email Previews</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
-              <div className="font-bold text-blue-600">Trigger: Request Submitted</div>
-              <div className="font-semibold text-slate-800">Subject: "We Received Your First Avenue Dentistry Appointment Request"</div>
-              <p className="text-slate-500 leading-relaxed">
-                "Dear [Patient], Thank you for requesting a luxury consultation. Our concierge desk is confirming your schedule slot..."
-              </p>
-            </div>
-
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
-              <div className="font-bold text-emerald-600">Trigger: Request Approved</div>
-              <div className="font-semibold text-slate-800">Subject: "CONFIRMED: Your Visit to First Avenue Family Dentistry"</div>
-              <p className="text-slate-500 leading-relaxed">
-                "Dear [Patient], Your appointment has been confirmed with [Doctor] on [Date] at [Time]. Includes attached .ICS calendar file & preparation guide."
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* TAB 4: EMAIL AUTOMATIONS */}
+      {activeTab === 'emails' && <EmailAutomationsTab />}
 
       {/* TAB 5: SITE & SEO SETTINGS */}
       {activeTab === 'settings' && (
@@ -774,3 +753,105 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     </div>
   );
 };
+
+function EmailAutomationsTab() {
+  const [status, setStatus] = useState<any>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [testEmail, setTestEmail] = useState('');
+  const [testMsg, setTestMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/email-status').then(r => r.json()).then(setStatus).catch(() => {});
+    fetch('/api/admin/email-log').then(r => r.json()).then(setLogs).catch(() => {});
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+        <h3 className="text-lg font-bold text-slate-900">Email System Status</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`p-4 rounded-2xl border text-xs ${status?.sendGridReady ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">SendGrid</div>
+            <div className={`text-lg font-black ${status?.sendGridReady ? 'text-emerald-600' : 'text-slate-400'}`}>
+              {status?.sendGridReady ? 'Ready' : 'Not Set'}
+            </div>
+          </div>
+          <div className={`p-4 rounded-2xl border text-xs ${status?.smtpReady ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">Gmail SMTP</div>
+            <div className={`text-lg font-black ${status?.smtpReady ? 'text-emerald-600' : 'text-red-400'}`}>
+              {status?.smtpReady ? 'Connected' : 'Blocked'}
+            </div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs">
+            <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">Emails Logged</div>
+            <div className="text-lg font-black text-blue-600">{logs.length}</div>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs">
+            <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">Log File Size</div>
+            <div className="text-lg font-black text-slate-600">{status?.logFile ? `${(status.logFile / 1024).toFixed(1)} KB` : '0 B'}</div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
+          <div className="font-bold text-amber-700">Gmail SMTP is blocked from Render's network. To send real emails:</div>
+          <ol className="text-amber-600 list-decimal list-inside space-y-1">
+            <li>Sign up for a free <a href="https://sendgrid.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold">SendGrid</a> account (100 emails/day free)</li>
+            <li>Create an API key in SendGrid dashboard</li>
+            <li>Add it as an environment variable on Render: <code className="bg-amber-100 px-1 py-0.5 rounded">SENDGRID_API_KEY</code></li>
+            <li>Redeploy — emails will be sent automatically</li>
+          </ol>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+        <h3 className="text-lg font-bold text-slate-900">Send Test Email</h3>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            placeholder="Email to send test to..."
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
+          />
+          <button
+            onClick={async () => {
+              setTestMsg('');
+              const target = testEmail || 'fenilxpatel2642@gmail.com';
+              const res = await fetch('/api/admin/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: target })
+              });
+              const data = await res.json();
+              setTestMsg(`Test email queued for ${target}. SendGrid: ${data.sendGridReady ? 'yes' : 'no'}, SMTP: ${data.smtpReady ? 'yes' : 'no'}`);
+            }}
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors"
+          >
+            Send Test
+          </button>
+        </div>
+        {testMsg && <div className="text-xs text-blue-600">{testMsg}</div>}
+      </div>
+
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+        <h3 className="text-lg font-bold text-slate-900">Email Log ({logs.length})</h3>
+        {logs.length === 0 ? (
+          <p className="text-xs text-slate-400">No emails logged yet.</p>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {[...logs].reverse().map((log, i) => (
+              <div key={i} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="font-bold text-slate-700">To: {log.to}</span>
+                  <span className="text-slate-400">{new Date(log.timestamp).toLocaleString()}</span>
+                </div>
+                <div className="font-semibold text-blue-600">{log.subject}</div>
+                <pre className="text-slate-500 text-[10px] whitespace-pre-wrap line-clamp-3">{log.body}</pre>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

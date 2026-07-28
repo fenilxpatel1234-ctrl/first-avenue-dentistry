@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser } from './src/types';
 
@@ -43,74 +44,93 @@ function authenticateAdmin(email: string, password: string): AdminUser | null {
   return adminDatabase.find(a => a.email === email && a.password === password) || null;
 }
 
-// Email transporter
+// Email delivery: SendGrid > Gmail SMTP > File log
 const EMAIL_USER = 'fenilxpatel2642@gmail.com';
 const EMAIL_PASS = 'skww dpsl hobz stiz';
 const EMAIL_LOG_FILE = path.join(DATA_DIR, 'email_log.json');
-let emailTransporterReady = false;
+const SENDGRID_KEY = process.env.SENDGRID_API_KEY || '';
 
-let transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
-});
+let sendGridReady = false;
 
-initTransporter();
+if (SENDGRID_KEY) {
+  sgMail.setApiKey(SENDGRID_KEY);
+  sendGridReady = true;
+  console.log('SendGrid API key configured');
+} else {
+  console.log('No SENDGRID_API_KEY set - will try Gmail SMTP, then fall back to file log');
+}
 
-async function initTransporter() {
+// Gmail SMTP fallback
+let smtpTransporter: nodemailer.Transporter | null = null;
+let smtpReady = false;
+
+(async () => {
   try {
-    await transporter.verify();
-    emailTransporterReady = true;
-    console.log('Email ready: smtp.gmail.com:465');
-  } catch (err1: any) {
-    console.error('SMTP 465 failed:', err1.message);
+    smtpTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: 465, secure: true,
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    });
+    await smtpTransporter.verify();
+    smtpReady = true;
+    console.log('Gmail SMTP ready (465)');
+  } catch {
     try {
-      transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        secure: false,
-        requireTLS: true,
+      smtpTransporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com', port: 587, secure: false, requireTLS: true,
         auth: { user: EMAIL_USER, pass: EMAIL_PASS }
       });
-      await transporter.verify();
-      emailTransporterReady = true;
-      console.log('Email ready: smtp.gmail.com:587');
-    } catch (err2: any) {
-      console.error('SMTP 587 also failed:', err2.message);
-      console.error('Emails will be logged locally instead.');
+      await smtpTransporter.verify();
+      smtpReady = true;
+      console.log('Gmail SMTP ready (587)');
+    } catch {
+      console.log('Gmail SMTP unavailable - will use SendGrid or file log');
     }
   }
-}
+})();
 
 function logEmailToFile(to: string, subject: string, body: string): void {
   try {
     const logs = loadJSON(EMAIL_LOG_FILE, []);
     logs.push({ to, subject, body, timestamp: new Date().toISOString() });
     saveJSON(EMAIL_LOG_FILE, logs);
-    console.log(`Email logged to file for ${to}`);
   } catch {}
 }
 
-function deliverEmail(to: string, subject: string, body: string): void {
-  console.log(`Email to ${to}: [${subject}]`);
+async function deliverEmail(to: string, subject: string, body: string): Promise<void> {
+  console.log(`Delivering email to ${to}: [${subject}]`);
   logEmailToFile(to, subject, body);
 
-  if (!emailTransporterReady) {
-    console.log('SMTP not available - email saved to log file only');
-    return;
+  // Try SendGrid first (works over HTTPS, port 443)
+  if (sendGridReady) {
+    try {
+      await sgMail.send({
+        to,
+        from: { email: EMAIL_USER, name: 'First Avenue Dentistry' },
+        subject,
+        text: body
+      });
+      console.log('Email sent via SendGrid');
+      return;
+    } catch (err: any) {
+      console.error('SendGrid failed:', err.message);
+    }
   }
 
-  transporter.sendMail({
-    from: `"First Avenue Dentistry" <${EMAIL_USER}>`,
-    to,
-    subject,
-    text: body
-  }).then(info => {
-    console.log('Email delivered:', info.messageId);
-  }).catch(err => {
-    console.error('SMTP send failed:', err.message);
-  });
+  // Fallback to Gmail SMTP
+  if (smtpReady && smtpTransporter) {
+    try {
+      const info = await smtpTransporter.sendMail({
+        from: `"First Avenue Dentistry" <${EMAIL_USER}>`,
+        to, subject, text: body
+      });
+      console.log('Email sent via Gmail SMTP:', info.messageId);
+      return;
+    } catch (err: any) {
+      console.error('Gmail SMTP failed:', err.message);
+    }
+  }
+
+  console.log('Email saved to log file only (no delivery method available)');
 }
 
 function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
@@ -409,13 +429,28 @@ app.patch('/api/admin/profile', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+// Email log endpoint
+app.get('/api/admin/email-log', (req: Request, res: Response) => {
+  const logs = loadJSON(EMAIL_LOG_FILE, []);
+  res.json(logs);
+});
+
+// Email status endpoint
+app.get('/api/admin/email-status', (req: Request, res: Response) => {
+  res.json({
+    sendGridReady,
+    smtpReady,
+    hasSendGridKey: !!SENDGRID_KEY,
+    logFile: fs.existsSync(EMAIL_LOG_FILE) ? fs.statSync(EMAIL_LOG_FILE).size : 0
+  });
+});
+
 // Test email endpoint
 app.post('/api/admin/test-email', (req: Request, res: Response) => {
   const { to } = req.body;
   const target = to || 'fenilxpatel2642@gmail.com';
-  console.log('Test email requested, sending to', target);
   deliverEmail(target, 'Test Email from First Avenue Dentistry', 'This is a test email to verify the email system is working.\n\nIf you received this, emails are being delivered successfully!\n\n- First Avenue Dentistry Server');
-  res.json({ success: true, message: `Test email sent to ${target}. Check your inbox (and spam folder).`, smtpReady: emailTransporterReady });
+  res.json({ success: true, message: `Email queued for ${target}.`, sendGridReady, smtpReady });
 });
 
 // Local FAQ responses (works without API key)
