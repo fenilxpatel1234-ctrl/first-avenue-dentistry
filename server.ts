@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser } from './src/types';
 
@@ -40,6 +41,81 @@ function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); }
 // Simple auth helper
 function authenticateAdmin(email: string, password: string): AdminUser | null {
   return adminDatabase.find(a => a.email === email && a.password === password) || null;
+}
+
+// Email transporter
+const EMAIL_USER = 'fenilxpatel2642@gmail.com';
+const EMAIL_PASS = 'skww dpsl hobz stiz';
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+});
+
+function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
+  let subject = '';
+  let body = '';
+  const patientName = `${apt.firstName} ${apt.lastName}`;
+  const clinicName = 'First Avenue Dentistry';
+  const clinicPhone = '(519) 207-6890';
+  const clinicAddress = '308 Wellington Street, St.Thomas, ON N5R 2S9';
+
+  if (newStatus === 'Approved') {
+    subject = `Your Appointment at ${clinicName} is Confirmed!`;
+    body = `Dear ${patientName},
+
+Your appointment at ${clinicName} has been CONFIRMED!
+
+Date: ${apt.confirmedDate || apt.preferredDate}
+Time: ${apt.confirmedTime || apt.preferredTimeSlot}
+Doctor: ${apt.assignedDoctor || apt.doctorPreference}
+Service: ${apt.serviceName}
+
+Location: ${clinicAddress}
+Phone: ${clinicPhone}
+
+Please arrive 10 minutes early for your appointment. If you need to reschedule, please contact us at least 24 hours in advance.
+
+We look forward to seeing you!
+
+Best regards,
+${clinicName} Team`;
+  } else if (newStatus === 'Rejected') {
+    subject = `Update on Your ${clinicName} Appointment Request`;
+    body = `Dear ${patientName},
+
+Unfortunately, we are unable to accommodate your appointment request for ${apt.serviceName} on ${apt.preferredDate} at ${apt.preferredTimeSlot}.
+
+${apt.adminNotes ? `Notes from our team: ${apt.adminNotes}\n\n` : ''}Please feel free to book another appointment through our website or call us at ${clinicPhone}. We'd love to find a time that works for you.
+
+Best regards,
+${clinicName} Team`;
+  } else if (newStatus === 'Rescheduled') {
+    subject = `Your ${clinicName} Appointment Has Been Rescheduled`;
+    body = `Dear ${patientName},
+
+Your appointment has been RESCHEDULED.
+
+New Date: ${apt.confirmedDate || apt.preferredDate}
+New Time: ${apt.confirmedTime || apt.preferredTimeSlot}
+Doctor: ${apt.assignedDoctor || apt.doctorPreference}
+Service: ${apt.serviceName}
+
+${apt.adminNotes ? `Notes: ${apt.adminNotes}\n\n` : ''}If this new time doesn't work for you, please call us at ${clinicPhone}.
+
+Best regards,
+${clinicName} Team`;
+  } else {
+    return;
+  }
+
+  transporter.sendMail({
+    from: `"${clinicName}" <${EMAIL_USER}>`,
+    to: apt.email,
+    subject,
+    text: body
+  }).catch(err => {
+    console.error('Failed to send email to', apt.email, err.message);
+  });
 }
 
 // --- API ENDPOINTS ---
@@ -118,6 +194,7 @@ app.patch('/api/appointments/:id', (req: Request, res: Response) => {
   }
 
   const existing = appointmentDatabase[aptIndex];
+  const oldStatus = existing.status;
   appointmentDatabase[aptIndex] = {
     ...existing,
     ...(status && { status }),
@@ -127,6 +204,11 @@ app.patch('/api/appointments/:id', (req: Request, res: Response) => {
     ...(adminNotes !== undefined && { adminNotes })
   };
   persistAppointments();
+
+  // Send email on status change
+  if (status && status !== oldStatus) {
+    sendStatusEmail(appointmentDatabase[aptIndex], status);
+  }
 
   return res.json({
     success: true,
@@ -303,7 +385,6 @@ app.patch('/api/admin/profile', (req: Request, res: Response) => {
 const FAQ_RESPONSES: Record<string, string> = {
   'services': 'We offer a full range of dental services including: General Checkups & Cleanings, Bespoke Porcelain Veneers, 3D Guided Dental Implants, Invisalign Clear Aligners, Professional Zoom Teeth Whitening, Root Canal Therapy, Crowns & Bridges, Full & Partial Dentures, Pediatric Dentistry, Gum Disease Treatment, Oral Surgery & Extractions, and Sedation Dentistry.',
   'hours': 'Our office hours are: Monday – Friday 8:00 AM – 5:00 PM, Saturday 9:00 AM – 2:00 PM, and Sunday Closed.',
-  'appointment': 'You can book an appointment by using the "Book Online" button on our website or by calling us directly. We accept new patients!',
   'new patient': 'Yes, we are accepting new patients! You can book your first visit online or give us a call.',
   'insurance': 'We accept most major dental insurance plans including Delta Dental, Cigna, and more. We also offer flexible payment plans for self-pay patients.',
   'whitening': 'Our Professional Zoom Teeth Whitening treatment can brighten your smile in about one hour. Results last 6-12 months with proper care.',
@@ -314,7 +395,7 @@ const FAQ_RESPONSES: Record<string, string> = {
   'emergency': 'If you have a dental emergency, please call us immediately. For severe pain, swelling, or trauma, we offer same-day emergency appointments.',
 };
 
-// Gemini AI Dental Concierge Endpoint
+// AI Dental Concierge Endpoint
 app.post('/api/ai/dental-assistant', async (req: Request, res: Response) => {
   try {
     const { message, prompt } = req.body;
@@ -323,8 +404,20 @@ app.post('/api/ai/dental-assistant', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Message is required.' });
     }
 
-    // Try local FAQ match first
     const lower = input.toLowerCase();
+
+    // Check for booking intent
+    const bookingKeywords = ['book', 'schedule', 'appointment', 'make an appointment', 'book an appointment', 'schedule a visit', 'want to book', 'booking'];
+    const isBookingIntent = bookingKeywords.some(k => lower.includes(k));
+
+    if (isBookingIntent || lower.includes('book') || lower.includes('schedule')) {
+      return res.json({
+        answer: "I'd be happy to help you book an appointment! Let me guide you through it.\n\nFirst, what's your first name?",
+        action: 'booking_start'
+      });
+    }
+
+    // Try local FAQ match first
     for (const [keyword, answer] of Object.entries(FAQ_RESPONSES)) {
       if (lower.includes(keyword)) {
         return res.json({ answer: answer + ' Would you like to schedule a consultation? I can help you book an appointment right now.' });
@@ -333,7 +426,7 @@ app.post('/api/ai/dental-assistant', async (req: Request, res: Response) => {
 
     // Default fallback
     return res.json({
-      answer: "Thank you for your question! At First Avenue Family Dentistry, we're here to help with all your dental needs. Please give us a call at (519) 207-6890 or book an appointment online and our team will be happy to assist you!"
+      answer: "Thank you for your question! At First Avenue Dentistry, we're here to help with all your dental needs. Please give us a call at (519) 207-6890 or book an appointment online and our team will be happy to assist you!"
     });
   } catch (err: any) {
     return res.json({
