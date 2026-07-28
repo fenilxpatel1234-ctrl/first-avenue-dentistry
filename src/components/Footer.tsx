@@ -19,7 +19,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectView, onOpenBooking }) =
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img
-                src="https://kommodo.ai/i/ZqZNyBfg6uGb6rRFQYpz"
+                src="/logo.png"
                 alt="First Avenue Dentistry"
                 className="w-10 h-10 object-contain"
               />
