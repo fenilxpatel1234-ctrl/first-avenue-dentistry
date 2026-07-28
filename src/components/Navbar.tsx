@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               alt="First Avenue Dentistry" 
               className="w-12 h-12 object-contain"
             />
-            <div className="hidden sm:block">
+            <div className="block">
               <span className="block text-sm font-bold tracking-tight text-slate-900 leading-tight">
                 FIRST AVENUE
               </span>
