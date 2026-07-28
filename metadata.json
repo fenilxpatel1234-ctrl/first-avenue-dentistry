@@ -1,0 +1,6 @@
+{
+  "name": "First Avenue Family Dentistry",
+  "description": "Ultra-luxurious, modern dental care website and appointment system for First Avenue Family Dentistry.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
