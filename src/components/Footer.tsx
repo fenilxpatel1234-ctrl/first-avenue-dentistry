@@ -21,12 +21,8 @@ export const Footer: React.FC<FooterProps> = ({ onSelectView, onOpenBooking }) =
               <img
                 src="/logo.png"
                 alt="First Avenue Dentistry"
-                className="w-10 h-10 object-contain"
+                className="w-14 h-14 object-contain"
               />
-              <div>
-                <span className="block text-sm font-bold text-white tracking-tight">FIRST AVENUE</span>
-                <span className="block text-[10px] font-semibold text-blue-300 tracking-widest">DENTISTRY</span>
-              </div>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
               Your trusted family dentist in St. Thomas, ON. Providing compassionate, gentle dental care for the whole family.

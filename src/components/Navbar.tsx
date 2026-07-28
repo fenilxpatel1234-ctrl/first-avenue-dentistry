@@ -64,16 +64,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img 
               src="/logo.png" 
               alt="First Avenue Dentistry" 
-              className="w-12 h-12 object-contain"
+              className="w-16 h-16 object-contain"
             />
-            <div className="block">
-              <span className="block text-sm font-bold tracking-tight text-slate-900 leading-tight">
-                FIRST AVENUE
-              </span>
-              <span className="block text-[10px] uppercase font-semibold tracking-widest text-blue-600">
-                DENTISTRY
-              </span>
-            </div>
           </button>
 
           <nav className="hidden lg:flex items-center gap-0.5">
