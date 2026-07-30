@@ -4,7 +4,7 @@ import fs from 'fs';
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import { createServer as createViteServer } from 'vite';
-import { AppointmentRequest, PatientMessage, AdminUser } from './src/types';
+import { AppointmentRequest, PatientMessage, AdminUser, ResetToken } from './src/types';
 
 const app = express();
 const PORT = 3000;
@@ -55,16 +55,16 @@ function saveJSON<T>(filePath: string, data: T[]): void {
 let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, []);
 let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, []);
 let adminDatabase: AdminUser[] = loadJSON(ADMINS_FILE, [
-  { id: 'admin-1', name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', password: 'AdminPassword2026!', role: 'Super Admin', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString() }
+  { id: 'admin-1', name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', password: 'AdminPassword2026!', role: 'Super Admin', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString() }
 ]);
 
 function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase); }
 function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); }
 function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); }
 
-// Simple auth helper
-function authenticateAdmin(email: string, password: string): AdminUser | null {
-  return adminDatabase.find(a => a.email === email && a.password === password) || null;
+// Simple auth helper (accepts email or username)
+function authenticateAdmin(login: string, password: string): AdminUser | null {
+  return adminDatabase.find(a => (a.email === login || a.username === login) && a.password === password) || null;
 }
 
 // Email delivery: SendGrid > Gmail SMTP > File log
@@ -384,17 +384,18 @@ app.get('/api/contact', (req: Request, res: Response) => {
   res.json(messageDatabase);
 });
 
-// Admin Auth Endpoint
+// Admin Auth Endpoint (accepts email or username)
 app.post('/api/admin/login', (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  const admin = authenticateAdmin(email, password);
+  const { email, username, password } = req.body;
+  const login = email || username || '';
+  const admin = authenticateAdmin(login, password);
   if (admin) {
     admin.lastLogin = new Date().toISOString();
     persistAdmins();
     return res.json({
       success: true,
       token: `jwt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      user: { email: admin.email, role: admin.role, name: admin.name }
+      user: { email: admin.email, username: admin.username, role: admin.role, name: admin.name }
     });
   }
   return res.status(401).json({ error: 'Invalid credentials.' });
@@ -408,12 +409,13 @@ app.get('/api/admin/accounts', (req: Request, res: Response) => {
 
 // Admin: Create admin account
 app.post('/api/admin/accounts', (req: Request, res: Response) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, username, password, role } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required.' });
   if (adminDatabase.find(a => a.email === email)) return res.status(400).json({ error: 'Email already exists.' });
+  if (username && adminDatabase.find(a => a.username === username)) return res.status(400).json({ error: 'Username already exists.' });
   const newAdmin: AdminUser = {
     id: `admin-${Date.now().toString(36)}`,
-    name, email, password,
+    name, email, username, password,
     role: role || 'Admin',
     createdAt: new Date().toISOString()
   };
@@ -428,9 +430,10 @@ app.patch('/api/admin/accounts/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const idx = adminDatabase.findIndex(a => a.id === id);
   if (idx === -1) return res.status(404).json({ error: 'Admin not found.' });
-  const { name, email, password, role } = req.body;
+  const { name, email, username, password, role } = req.body;
   if (name) adminDatabase[idx].name = name;
   if (email) adminDatabase[idx].email = email;
+  if (username !== undefined) adminDatabase[idx].username = username;
   if (password) adminDatabase[idx].password = password;
   if (role) adminDatabase[idx].role = role;
   persistAdmins();
@@ -448,15 +451,98 @@ app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
 
 // Admin: Update own profile
 app.patch('/api/admin/profile', (req: Request, res: Response) => {
-  const { name, email, currentPassword, newPassword } = req.body;
+  const { name, email, username, currentPassword, newPassword } = req.body;
   const admin = adminDatabase[0];
   if (!admin) return res.status(404).json({ error: 'No admin found.' });
   if (currentPassword && admin.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect.' });
   if (name) admin.name = name;
   if (email) admin.email = email;
+  if (username !== undefined) admin.username = username;
   if (newPassword) admin.password = newPassword;
   persistAdmins();
   res.json({ success: true });
+});
+
+// Forgot password - generate reset token and email
+const RESET_TOKENS_FILE = path.join(DATA_DIR, 'reset_tokens.json');
+let resetTokens: ResetToken[] = loadJSON(RESET_TOKENS_FILE, []);
+function persistResetTokens() { saveJSON(RESET_TOKENS_FILE, resetTokens); }
+setInterval(() => {
+  const now = Date.now();
+  resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
+  persistResetTokens();
+}, 300_000);
+
+app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+    const admin = adminDatabase.find(a => a.email === email);
+    if (!admin) return res.status(404).json({ error: 'No account found with that email.' });
+
+    // Clean up expired tokens
+    const now = Date.now();
+    resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
+
+    // Check existing token for this email
+    const existing = resetTokens.find(t => t.email === email);
+    if (existing) {
+      resetTokens = resetTokens.filter(t => t.email !== email);
+    }
+
+    const token = `reset_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    resetTokens.push({ token, email, expiresAt });
+    persistResetTokens();
+
+    const resetLink = `https://firstavenuedentistry.com/#reset-password?token=${token}`;
+    const subject = 'Password Reset - First Avenue Dentistry Admin';
+    const body = `You requested a password reset for your First Avenue Dentistry admin account.\n\nClick the link below to reset your password (expires in 15 minutes):\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n\n- First Avenue Dentistry Team`;
+
+    await deliverEmail(email, subject, body);
+
+    return res.json({ success: true, message: 'Password reset link sent to your email.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to send reset email.' });
+  }
+});
+
+// Reset password with token
+app.post('/api/admin/reset-password', (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required.' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+    const now = Date.now();
+    resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
+    persistResetTokens();
+
+    const stored = resetTokens.find(t => t.token === token);
+    if (!stored) return res.status(400).json({ error: 'Invalid or expired reset token.' });
+
+    const admin = adminDatabase.find(a => a.email === stored.email);
+    if (!admin) return res.status(404).json({ error: 'Admin account not found.' });
+
+    admin.password = newPassword;
+    persistAdmins();
+
+    resetTokens = resetTokens.filter(t => t.token !== token);
+    persistResetTokens();
+
+    return res.json({ success: true, message: 'Password has been reset successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to reset password.' });
+  }
+});
+
+// Check if reset token is valid
+app.get('/api/admin/check-reset-token', (req: Request, res: Response) => {
+  const token = req.query.token as string;
+  if (!token) return res.json({ valid: false });
+  resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > Date.now());
+  const valid = resetTokens.some(t => t.token === token);
+  res.json({ valid, email: valid ? resetTokens.find(t => t.token === token)?.email : null });
 });
 
 // Email log endpoint

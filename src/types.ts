@@ -65,10 +65,17 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
+  username?: string;
   password: string;
   role: 'Super Admin' | 'Admin' | 'Viewer';
   createdAt: string;
   lastLogin?: string;
+}
+
+export interface ResetToken {
+  token: string;
+  email: string;
+  expiresAt: string;
 }
 
 export interface PatientMessage {

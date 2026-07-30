@@ -34,9 +34,19 @@ interface AdminViewProps {
 
 export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('admin@firstavenuedentistry.com');
+  const [adminLogin, setAdminLogin] = useState('admin');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetMsg, setResetMsg] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins'>('appointments');
   const [visitorCount, setVisitorCount] = useState(0);
@@ -51,8 +61,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', role: 'Admin' as AdminUser['role'] });
-  const [profileForm, setProfileForm] = useState({ name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', username: '', password: '', role: 'Admin' as AdminUser['role'] });
+  const [profileForm, setProfileForm] = useState({ name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', currentPassword: '', newPassword: '', confirmPassword: '' });
   const [profileMsg, setProfileMsg] = useState('');
 
   // Selected appointment for modal action
@@ -127,7 +137,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: adminEmail, password: adminPassword })
+        body: JSON.stringify({ username: adminLogin, password: adminPassword })
       });
 
       const data = await res.json();
@@ -187,7 +197,117 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     return matchesSearch && matchesStatus;
   });
 
+  // Check URL for reset token on mount
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#reset-password')) {
+      const params = new URLSearchParams(hash.split('?')[1] || '');
+      const token = params.get('token');
+      if (token) {
+        setResetToken(token);
+        setShowResetPassword(true);
+      }
+    }
+  }, []);
+
   if (!isLoggedIn) {
+    if (showResetPassword) {
+      return (
+        <div className="pt-32 pb-20 max-w-md mx-auto px-4 flex items-center justify-center min-h-[70vh]">
+          <div className="w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900">Reset Password</h2>
+              <p className="text-xs text-slate-500">Enter your new password below</p>
+            </div>
+
+            {resetMsg && (
+              <div className={`p-3 border text-xs rounded-xl font-medium ${resetMsg.includes('success') ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-red-50 border-red-200 text-red-600'}`}>{resetMsg}</div>
+            )}
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setResetMsg('');
+              if (resetNewPassword.length < 6) { setResetMsg('Password must be at least 6 characters.'); return; }
+              if (resetNewPassword !== resetConfirmPassword) { setResetMsg('Passwords do not match.'); return; }
+              setResetLoading(true);
+              try {
+                const res = await fetch('/api/admin/reset-password', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: resetToken, newPassword: resetNewPassword })
+                });
+                const data = await res.json();
+                setResetMsg(data.success ? 'Password reset successfully! You can now sign in.' : data.error || 'Failed to reset password.');
+                if (data.success) {
+                  setTimeout(() => { setShowResetPassword(false); setResetToken(''); setResetNewPassword(''); setResetConfirmPassword(''); }, 2000);
+                }
+              } catch {
+                setResetMsg('Network error.');
+              } finally { setResetLoading(false); }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">New Password</label>
+                <input type="password" required minLength={6} value={resetNewPassword} onChange={(e) => setResetNewPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm Password</label>
+                <input type="password" required minLength={6} value={resetConfirmPassword} onChange={(e) => setResetConfirmPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <button type="submit" disabled={resetLoading} className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors disabled:opacity-50">{resetLoading ? 'Resetting...' : 'Reset Password'}</button>
+              <button type="button" onClick={() => { setShowResetPassword(false); setShowForgotPassword(false); }} className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Back to Login</button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    if (showForgotPassword) {
+      return (
+        <div className="pt-32 pb-20 max-w-md mx-auto px-4 flex items-center justify-center min-h-[70vh]">
+          <div className="w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900">Forgot Password</h2>
+              <p className="text-xs text-slate-500">Enter your registered email to receive a reset link</p>
+            </div>
+
+            {forgotMsg && (
+              <div className={`p-3 border text-xs rounded-xl font-medium ${forgotMsg.includes('sent') ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-red-50 border-red-200 text-red-600'}`}>{forgotMsg}</div>
+            )}
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setForgotMsg('');
+              setForgotLoading(true);
+              try {
+                const res = await fetch('/api/admin/forgot-password', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: forgotEmail })
+                });
+                const data = await res.json();
+                setForgotMsg(data.success ? 'Reset link sent! Please check your email.' : data.error || 'Failed to send reset email.');
+              } catch {
+                setForgotMsg('Network error.');
+              } finally { setForgotLoading(false); }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Registered Email</label>
+                <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <button type="submit" disabled={forgotLoading} className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors disabled:opacity-50">{forgotLoading ? 'Sending...' : 'Send Reset Link'}</button>
+              <button type="button" onClick={() => { setShowForgotPassword(false); setForgotMsg(''); }} className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Back to Login</button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="pt-32 pb-20 max-w-md mx-auto px-4 flex items-center justify-center min-h-[70vh]">
         <div className="w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-2xl space-y-6">
@@ -207,12 +327,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Admin Email</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Username or Email</label>
               <input
-                type="email"
+                type="text"
                 required
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
+                value={adminLogin}
+                onChange={(e) => setAdminLogin(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -226,7 +346,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 onChange={(e) => setAdminPassword(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
 
+            <div className="text-right -mt-2">
+              <button type="button" onClick={() => { setShowForgotPassword(true); setLoginError(''); }} className="text-xs text-blue-600 hover:text-blue-700 font-semibold">Forgot Password?</button>
             </div>
 
             <button
@@ -671,6 +794,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 <label className="block font-semibold mb-1">Email</label>
                 <input type="email" value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              <div>
+                <label className="block font-semibold mb-1">Username (for login)</label>
+                <input type="text" value={profileForm.username} onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
               <div className="border-t border-slate-200 pt-4">
                 <h4 className="font-bold text-slate-900 mb-3">Change Password</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -687,6 +814,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                   body: JSON.stringify({
                     name: profileForm.name,
                     email: profileForm.email,
+                    username: profileForm.username || undefined,
                     currentPassword: profileForm.currentPassword || undefined,
                     newPassword: profileForm.newPassword || undefined
                   })
@@ -714,9 +842,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
           {showAddAdmin && (
             <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
               <h4 className="font-bold text-sm text-slate-900">New Admin Account</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <input type="text" placeholder="Full Name" value={newAdmin.name} onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="email" placeholder="Email" value={newAdmin.email} onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" placeholder="Username" value={newAdmin.username} onChange={(e) => setNewAdmin({ ...newAdmin, username: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="password" placeholder="Password" value={newAdmin.password} onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex items-center gap-3">
@@ -732,7 +861,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                     body: JSON.stringify(newAdmin)
                   });
                   const data = await res.json();
-                  if (data.success) { setShowAddAdmin(false); setNewAdmin({ name: '', email: '', password: '', role: 'Admin' }); fetchAdmins(); }
+                  if (data.success) { setShowAddAdmin(false); setNewAdmin({ name: '', email: '', username: '', password: '', role: 'Admin' }); fetchAdmins(); }
                   else alert(data.error);
                 }} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors">Save</button>
                 <button onClick={() => setShowAddAdmin(false)} className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Cancel</button>
@@ -746,6 +875,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="p-4">Name</th>
                   <th className="p-4">Email</th>
+                  <th className="p-4">Username</th>
                   <th className="p-4">Role</th>
                   <th className="p-4">Last Login</th>
                   <th className="p-4 text-right">Actions</th>
@@ -756,6 +886,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                   <tr key={admin.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 font-semibold text-slate-900">{admin.name}</td>
                     <td className="p-4 text-slate-600">{admin.email}</td>
+                    <td className="p-4 text-slate-400 font-mono text-[11px]">{admin.username || '-'}</td>
                     <td className="p-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${admin.role === 'Super Admin' ? 'bg-purple-100 text-purple-700' : admin.role === 'Admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{admin.role}</span>
                     </td>
@@ -781,6 +912,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 <div className="space-y-3">
                   <input type="text" value={editingAdmin.name} onChange={(e) => setEditingAdmin({ ...editingAdmin, name: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Name" />
                   <input type="email" value={editingAdmin.email} onChange={(e) => setEditingAdmin({ ...editingAdmin, email: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Email" />
+                  <input type="text" value={editingAdmin.username || ''} onChange={(e) => setEditingAdmin({ ...editingAdmin, username: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Username" />
                   <input type="password" placeholder="New password (leave blank to keep)" onChange={(e) => setEditingAdmin({ ...editingAdmin, password: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" />
                   <select value={editingAdmin.role} onChange={(e) => setEditingAdmin({ ...editingAdmin, role: e.target.value as AdminUser['role'] })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
                     <option value="Admin">Admin</option>
