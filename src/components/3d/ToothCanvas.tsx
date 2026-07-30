@@ -21,40 +21,49 @@ export const ToothCanvas: React.FC = () => {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     currentMount.appendChild(renderer.domElement);
 
-    const group = new THREE.Group();
+    const toothGroup = new THREE.Group();
+
+    const texLoader = new THREE.TextureLoader();
+    texLoader.load('/tooth-model.png', (texture) => {
+      const geo = new THREE.CircleGeometry(1.6, 64);
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      toothGroup.add(mesh);
+    });
 
     const ringGeo = new THREE.TorusGeometry(2.4, 0.02, 16, 100);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.4, transparent: true });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = Math.PI / 3;
-    group.add(ringMesh);
+    toothGroup.add(ringMesh);
 
-    const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load('/tooth-model.png');
-    const spriteMat = new THREE.SpriteMaterial({
-      map: texture,
-      transparent: true,
-      depthTest: false,
-      sizeAttenuation: false
-    });
-    const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(3.8, 3.8, 1);
-    sprite.position.set(0, 0, 0);
-    group.add(sprite);
-
-    scene.add(group);
+    scene.add(toothGroup);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     scene.add(ambientLight);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    mainLight.position.set(5, 5, 5);
+    mainLight.castShadow = true;
+    scene.add(mainLight);
+    const blueLight = new THREE.PointLight(0x3b82f6, 3, 10);
+    blueLight.position.set(-4, -2, -2);
+    scene.add(blueLight);
+    const topSoftLight = new THREE.PointLight(0x60a5fa, 2, 10);
+    topSoftLight.position.set(0, 5, 2);
+    scene.add(topSoftLight);
 
     let animationFrameId: number;
     const clock = new THREE.Clock();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
-      group.rotation.y = elapsedTime * 0.4;
-      group.rotation.x = Math.sin(elapsedTime * 0.5) * 0.1;
-      group.position.y = Math.sin(elapsedTime * 1.5) * 0.15;
+      toothGroup.rotation.y = elapsedTime * 0.4;
+      toothGroup.rotation.x = Math.sin(elapsedTime * 0.5) * 0.1;
+      toothGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.15;
       ringMesh.rotation.z = elapsedTime * 0.2;
       renderer.render(scene, camera);
     };
