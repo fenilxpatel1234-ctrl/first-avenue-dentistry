@@ -55,11 +55,35 @@ function saveJSON<T>(filePath: string, data: T[]): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+const DEFAULT_ADMIN: AdminUser = {
+  id: 'admin-1', name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', password: 'AdminPassword2026!', role: 'Super Admin', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString()
+};
+
 let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, []);
 let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, []);
-let adminDatabase: AdminUser[] = loadJSON(ADMINS_FILE, [
-  { id: 'admin-1', name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', password: 'AdminPassword2026!', role: 'Super Admin', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString() }
-]);
+
+// Load admins from file; if missing, seed from defaults + env
+let adminDatabase: AdminUser[] = loadJSON(ADMINS_FILE, []);
+if (adminDatabase.length === 0) {
+  adminDatabase = [DEFAULT_ADMIN];
+  // Seed extra admins from environment variable (JSON array)
+  try {
+    const seed = process.env.ADMIN_SEED;
+    if (seed) {
+      const extra: AdminUser[] = JSON.parse(seed);
+      for (const a of extra) {
+        if (!adminDatabase.find(x => x.email === a.email)) adminDatabase.push(a);
+      }
+    }
+  } catch {}
+  saveJSON(ADMINS_FILE, adminDatabase);
+} else {
+  // Ensure default admin exists even if file was carried over without it
+  if (!adminDatabase.find(a => a.email === DEFAULT_ADMIN.email)) {
+    adminDatabase.unshift(DEFAULT_ADMIN);
+    saveJSON(ADMINS_FILE, adminDatabase);
+  }
+}
 
 function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase); }
 function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); }
