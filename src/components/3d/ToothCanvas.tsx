@@ -39,7 +39,7 @@ export const ToothCanvas: React.FC = () => {
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const targetSize = 2.5;
+      const targetSize = 2.1;
       const scale = targetSize / maxDim;
       model.scale.set(scale, scale, scale);
       const scaledBox = new THREE.Box3().setFromObject(model);
