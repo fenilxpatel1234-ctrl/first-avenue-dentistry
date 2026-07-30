@@ -152,7 +152,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       } catch {}
     };
     fetchVisitors();
-    const interval = setInterval(fetchVisitors, 10000);
+    const interval = setInterval(fetchVisitors, 60000);
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 

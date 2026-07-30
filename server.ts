@@ -13,7 +13,7 @@ app.use(express.json());
 
 // --- Live Visitor Tracking ---
 const visitorHits = new Map<string, number>();
-const VISITOR_TIMEOUT_MS = 5 * 60 * 1000;
+const VISITOR_TIMEOUT_MS = 1 * 60 * 1000;
 app.use((req, _res, next) => {
   const forwarded = req.headers['x-forwarded-for'];
   const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0])?.trim() || req.ip || req.socket.remoteAddress || 'unknown';

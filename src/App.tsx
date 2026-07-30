@@ -22,6 +22,7 @@ export default function App() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [isEmergencyBooking, setIsEmergencyBooking] = useState(false);
+  const initialHashRead = React.useRef(false);
 
   const syncViewFromHash = () => {
     const viewMap: Record<string, PageView> = {
@@ -38,12 +39,14 @@ export default function App() {
 
   useEffect(() => {
     syncViewFromHash();
+    initialHashRead.current = true;
     window.addEventListener('popstate', syncViewFromHash);
     return () => window.removeEventListener('popstate', syncViewFromHash);
   }, []);
 
   useEffect(() => {
-    if (currentView === 'home' && !window.location.hash) return;
+    if (!initialHashRead.current) return;
+    if (currentView === 'home' && (!window.location.hash || window.location.hash === '#home')) return;
     if (currentView === 'admin' || currentView === 'secure-admin-login') return;
     window.location.hash = currentView;
   }, [currentView]);
