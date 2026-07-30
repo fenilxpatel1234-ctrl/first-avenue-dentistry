@@ -32,7 +32,6 @@ export const ToothCanvas: React.FC = () => {
 
     loader.load('/models/modelToUsed.glb', (gltf) => {
       const model = gltf.scene;
-      model.scale.set(0.015, 0.015, 0.015);
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
@@ -44,7 +43,13 @@ export const ToothCanvas: React.FC = () => {
         }
       });
       const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const targetSize = 2.5;
+      const scale = targetSize / maxDim;
+      model.scale.set(scale, scale, scale);
+      const scaledBox = new THREE.Box3().setFromObject(model);
+      const center = scaledBox.getCenter(new THREE.Vector3());
       model.position.set(-center.x, -center.y, -center.z);
       toothGroup.add(model);
     }, undefined, (err) => {
