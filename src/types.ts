@@ -69,6 +69,7 @@ export interface AdminUser {
   username?: string;
   password: string;
   role: 'Super Admin' | 'Admin' | 'Viewer';
+  gender?: 'male' | 'female' | 'other';
   createdAt: string;
   lastLogin?: string;
 }

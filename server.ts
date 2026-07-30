@@ -15,8 +15,11 @@ app.use(express.json());
 const visitorHits = new Map<string, number>();
 const VISITOR_TIMEOUT_MS = 5 * 60 * 1000;
 app.use((req, _res, next) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  visitorHits.set(ip, Date.now());
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0])?.trim() || req.ip || req.socket.remoteAddress || 'unknown';
+  const ua = req.headers['user-agent'] || 'unknown';
+  const key = `${ip}|${ua}`;
+  visitorHits.set(key, Date.now());
   next();
 });
 setInterval(() => {
@@ -395,7 +398,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
     return res.json({
       success: true,
       token: `jwt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      user: { email: admin.email, username: admin.username, role: admin.role, name: admin.name }
+      user: { email: admin.email, username: admin.username, role: admin.role, name: admin.name, gender: admin.gender }
     });
   }
   return res.status(401).json({ error: 'Invalid credentials.' });
@@ -409,7 +412,7 @@ app.get('/api/admin/accounts', (req: Request, res: Response) => {
 
 // Admin: Create admin account
 app.post('/api/admin/accounts', (req: Request, res: Response) => {
-  const { name, email, username, password, role } = req.body;
+  const { name, email, username, password, role, gender } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required.' });
   if (adminDatabase.find(a => a.email === email)) return res.status(400).json({ error: 'Email already exists.' });
   if (username && adminDatabase.find(a => a.username === username)) return res.status(400).json({ error: 'Username already exists.' });
@@ -417,6 +420,7 @@ app.post('/api/admin/accounts', (req: Request, res: Response) => {
     id: `admin-${Date.now().toString(36)}`,
     name, email, username, password,
     role: role || 'Admin',
+    gender: gender || undefined,
     createdAt: new Date().toISOString()
   };
   adminDatabase.push(newAdmin);
@@ -430,12 +434,13 @@ app.patch('/api/admin/accounts/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const idx = adminDatabase.findIndex(a => a.id === id);
   if (idx === -1) return res.status(404).json({ error: 'Admin not found.' });
-  const { name, email, username, password, role } = req.body;
+  const { name, email, username, password, role, gender } = req.body;
   if (name) adminDatabase[idx].name = name;
   if (email) adminDatabase[idx].email = email;
   if (username !== undefined) adminDatabase[idx].username = username;
   if (password) adminDatabase[idx].password = password;
   if (role) adminDatabase[idx].role = role;
+  if (gender !== undefined) adminDatabase[idx].gender = gender;
   persistAdmins();
   const { password: _, ...safe } = adminDatabase[idx];
   res.json({ success: true, admin: safe });
@@ -451,13 +456,14 @@ app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
 
 // Admin: Update own profile
 app.patch('/api/admin/profile', (req: Request, res: Response) => {
-  const { name, email, username, currentPassword, newPassword } = req.body;
+  const { name, email, username, gender, currentPassword, newPassword } = req.body;
   const admin = adminDatabase[0];
   if (!admin) return res.status(404).json({ error: 'No admin found.' });
   if (currentPassword && admin.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect.' });
   if (name) admin.name = name;
   if (email) admin.email = email;
   if (username !== undefined) admin.username = username;
+  if (gender !== undefined) admin.gender = gender;
   if (newPassword) admin.password = newPassword;
   persistAdmins();
   res.json({ success: true });

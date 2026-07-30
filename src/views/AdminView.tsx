@@ -41,6 +41,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<{ name: string; username?: string; gender?: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins'>('appointments');
   const [visitorCount, setVisitorCount] = useState(0);
@@ -55,8 +56,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', username: '', password: '', role: 'Admin' as AdminUser['role'] });
-  const [profileForm, setProfileForm] = useState({ name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', username: '', password: '', role: 'Admin' as AdminUser['role'], gender: '' as string });
+  const [profileForm, setProfileForm] = useState({ name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', gender: '' as string, currentPassword: '', newPassword: '', confirmPassword: '' });
   const [profileMsg, setProfileMsg] = useState('');
 
   // Selected appointment for modal action
@@ -110,6 +111,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   }, [isLoggedIn]);
 
   useEffect(() => {
+    if (loggedInUser) {
+      setProfileForm(prev => ({
+        ...prev,
+        name: loggedInUser.name,
+        username: loggedInUser.username || prev.username,
+        gender: loggedInUser.gender || prev.gender
+      }));
+    }
+  }, [loggedInUser]);
+
+  useEffect(() => {
     if (!isLoggedIn) return;
     const fetchVisitors = async () => {
       try {
@@ -137,6 +149,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       const data = await res.json();
       if (data.success) {
         setIsLoggedIn(true);
+        setLoggedInUser(data.user || null);
       } else {
         setLoginError(data.error || 'Invalid credentials');
       }
@@ -302,8 +315,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Admin Management Console</h1>
-            <p className="text-xs text-slate-500">Logged in as Dr. Sarah Jenkins (Master Admin)</p>
+            <h1 className="text-xl font-bold text-slate-900">
+              {(() => {
+                const hour = new Date().getHours();
+                const period = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+                const prefix = loggedInUser?.gender === 'male' ? 'Mr.' : loggedInUser?.gender === 'female' ? 'Mrs.' : '';
+                return `${period} ${prefix} ${loggedInUser?.name || 'Admin'}`;
+              })()}
+            </h1>
+            <p className="text-xs text-slate-500">Admin Management Console</p>
           </div>
         </div>
 
@@ -726,6 +746,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 <label className="block font-semibold mb-1">Username (for login)</label>
                 <input type="text" value={profileForm.username} onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              <div>
+                <label className="block font-semibold mb-1">Gender</label>
+                <select value={profileForm.gender} onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
               <div className="border-t border-slate-200 pt-4">
                 <h4 className="font-bold text-slate-900 mb-3">Change Password</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -743,6 +772,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                     name: profileForm.name,
                     email: profileForm.email,
                     username: profileForm.username || undefined,
+                    gender: profileForm.gender || undefined,
                     currentPassword: profileForm.currentPassword || undefined,
                     newPassword: profileForm.newPassword || undefined
                   })
@@ -776,11 +806,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 <input type="text" placeholder="Username" value={newAdmin.username} onChange={(e) => setNewAdmin({ ...newAdmin, username: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
                 <input type="password" placeholder="Password" value={newAdmin.password} onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <select value={newAdmin.role} onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value as AdminUser['role'] })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
                   <option value="Admin">Admin</option>
                   <option value="Super Admin">Super Admin</option>
                   <option value="Viewer">Viewer</option>
+                </select>
+                <select value={newAdmin.gender} onChange={(e) => setNewAdmin({ ...newAdmin, gender: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                  <option value="">Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
                 </select>
                 <button onClick={async () => {
                   if (!newAdmin.name || !newAdmin.email || !newAdmin.password) return alert('Fill all fields');
@@ -789,7 +825,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                     body: JSON.stringify(newAdmin)
                   });
                   const data = await res.json();
-                  if (data.success) { setShowAddAdmin(false); setNewAdmin({ name: '', email: '', username: '', password: '', role: 'Admin' }); fetchAdmins(); }
+                  if (data.success) { setShowAddAdmin(false); setNewAdmin({ name: '', email: '', username: '', password: '', role: 'Admin', gender: '' }); fetchAdmins(); }
                   else alert(data.error);
                 }} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors">Save</button>
                 <button onClick={() => setShowAddAdmin(false)} className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Cancel</button>
@@ -846,6 +882,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                     <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
                     <option value="Viewer">Viewer</option>
+                  </select>
+                  <select value={editingAdmin.gender || ''} onChange={(e) => setEditingAdmin({ ...editingAdmin, gender: e.target.value as AdminUser['gender'] })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none">
+                    <option value="">Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
                 <div className="flex gap-2 pt-2">
