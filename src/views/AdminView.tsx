@@ -109,6 +109,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     } catch {}
   };
 
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('admin_session');
+    if (saved) {
+      try {
+        const session = JSON.parse(saved);
+        if (session.token && session.user) {
+          setIsLoggedIn(true);
+          setLoggedInUser(session.user);
+        }
+      } catch {}
+    }
+  }, []);
+
   useEffect(() => {
     if (isLoggedIn) {
       fetchAppointments();
@@ -155,6 +169,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem('admin_session', JSON.stringify({ token: data.token, user: data.user }));
         setIsLoggedIn(true);
         setLoggedInUser(data.user || null);
       } else {
@@ -438,7 +453,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             <Download className="w-4 h-4" /> Export CSV
           </a>
           <button
-            onClick={() => setIsLoggedIn(false)}
+            onClick={() => { localStorage.removeItem('admin_session'); setIsLoggedIn(false); }}
             className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
             <LogOut className="w-4 h-4" /> Sign Out
