@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 
 export const ToothCanvas: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -23,16 +24,30 @@ export const ToothCanvas: React.FC = () => {
 
     const toothGroup = new THREE.Group();
 
-    const texLoader = new THREE.TextureLoader();
-    texLoader.load('/tooth-model.png', (texture) => {
-      const geo = new THREE.CircleGeometry(1.6, 64);
-      const mat = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        side: THREE.DoubleSide
+    const loader = new FBXLoader();
+    loader.load('/models/tooth.FBX', (model) => {
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.roughness = 0.25;
+            child.material.metalness = 0.0;
+          }
+        }
       });
-      const mesh = new THREE.Mesh(geo, mat);
-      toothGroup.add(mesh);
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const targetSize = 2.5;
+      const scale = targetSize / maxDim;
+      model.scale.set(scale, scale, scale);
+      const scaledBox = new THREE.Box3().setFromObject(model);
+      const center = scaledBox.getCenter(new THREE.Vector3());
+      model.position.set(-center.x, -center.y, -center.z);
+      toothGroup.add(model);
+    }, undefined, (err) => {
+      console.error('FBX load error:', err);
     });
 
     const ringGeo = new THREE.TorusGeometry(2.4, 0.02, 16, 100);
