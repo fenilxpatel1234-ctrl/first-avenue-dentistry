@@ -33,7 +33,6 @@ export const ToothCanvas: React.FC = () => {
     loader.load('/models/mandibular_second_molar.glb', (gltf) => {
       const model = gltf.scene;
       model.scale.set(2.2, 2.2, 2.2);
-      model.position.set(0, 0, 0);
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
@@ -44,6 +43,9 @@ export const ToothCanvas: React.FC = () => {
           }
         }
       });
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.set(-center.x, -center.y, -center.z);
       toothGroup.add(model);
     }, undefined, (err) => {
       console.error('GLB load error:', err);
