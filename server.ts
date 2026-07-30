@@ -11,6 +11,29 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// --- Live Visitor Tracking ---
+const visitorHits = new Map<string, number>();
+const VISITOR_TIMEOUT_MS = 5 * 60 * 1000;
+app.use((req, _res, next) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  visitorHits.set(ip, Date.now());
+  next();
+});
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, time] of visitorHits) {
+    if (now - time > VISITOR_TIMEOUT_MS) visitorHits.delete(ip);
+  }
+}, 60_000);
+function getActiveVisitorCount(): number {
+  const now = Date.now();
+  let count = 0;
+  for (const time of visitorHits.values()) {
+    if (now - time <= VISITOR_TIMEOUT_MS) count++;
+  }
+  return count;
+}
+
 const DATA_DIR = path.join(process.cwd(), 'data');
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
@@ -171,6 +194,11 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Live Visitor Count
+app.get('/api/analytics/visitors', (req: Request, res: Response) => {
+  res.json({ count: getActiveVisitorCount(), timestamp: new Date().toISOString() });
+});
+
 // Submit Appointment Request
 app.post('/api/appointments', (req: Request, res: Response) => {
   try {
@@ -186,7 +214,8 @@ app.post('/api/appointments', (req: Request, res: Response) => {
       doctorPreference,
       insuranceProvider,
       isNewPatient,
-      notes
+      notes,
+      isEmergency
     } = req.body;
 
     if (!firstName || !lastName || !email || !phone) {
@@ -208,7 +237,8 @@ app.post('/api/appointments', (req: Request, res: Response) => {
       isNewPatient: Boolean(isNewPatient),
       notes: notes || '',
       status: 'Pending',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isEmergency: Boolean(isEmergency)
     };
 
     appointmentDatabase.unshift(newAppointment);

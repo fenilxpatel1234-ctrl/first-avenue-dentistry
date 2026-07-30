@@ -20,8 +20,9 @@ export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [isEmergencyBooking, setIsEmergencyBooking] = useState(false);
 
-  useEffect(() => {
+  const syncViewFromHash = () => {
     const viewMap: Record<string, PageView> = {
       'admin': 'admin', 'secure-admin-login': 'admin',
       'home': 'home', 'book-online': 'book-online', 'emergency': 'emergency',
@@ -31,6 +32,12 @@ export default function App() {
     const hash = window.location.hash.replace('#', '');
     const view = viewMap[hash] || 'home';
     setCurrentView(view);
+  };
+
+  useEffect(() => {
+    syncViewFromHash();
+    window.addEventListener('popstate', syncViewFromHash);
+    return () => window.removeEventListener('popstate', syncViewFromHash);
   }, []);
 
   useEffect(() => {
@@ -51,8 +58,9 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOpenBooking = (serviceId?: string) => {
+  const handleOpenBooking = (serviceId?: string, isEmergency?: boolean) => {
     setSelectedServiceId(serviceId);
+    setIsEmergencyBooking(!!isEmergency);
     setBookingModalOpen(true);
   };
 
@@ -79,7 +87,7 @@ export default function App() {
       case 'book-online':
         return <BookOnlineView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
       case 'emergency':
-        return <EmergencyView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
+        return <EmergencyView onSelectView={handleSelectView} onOpenBooking={(_, isEmerg) => handleOpenBooking(undefined, isEmerg)} />;
       case 'our-team':
         return <OurTeamView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
       case 'contact-us':
@@ -126,6 +134,7 @@ export default function App() {
         isOpen={bookingModalOpen}
         onClose={() => setBookingModalOpen(false)}
         preselectedServiceId={selectedServiceId}
+        isEmergency={isEmergencyBooking}
       />
 
       <DentalConciergeAI

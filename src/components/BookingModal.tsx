@@ -156,9 +156,11 @@ function getCountryByTimezone(): string {
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  preselectedServiceId?: string;
+  isEmergency?: boolean;
 }
 
-export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
+export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, preselectedServiceId, isEmergency }) => {
   const [countryCode, setCountryCode] = useState('US');
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
@@ -199,7 +201,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
           doctorPreference: 'Any Available',
           insuranceProvider: 'Not Specified',
           isNewPatient: true,
-          consent: true
+          consent: true,
+          isEmergency: !!isEmergency
         })
       });
       const data = await res.json();

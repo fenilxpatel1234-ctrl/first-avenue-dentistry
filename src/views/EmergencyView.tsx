@@ -5,7 +5,7 @@ import { ShieldAlert, PhoneCall, AlertTriangle, ArrowRight } from 'lucide-react'
 
 interface EmergencyViewProps {
   onSelectView: (view: PageView) => void;
-  onOpenBooking: () => void;
+  onOpenBooking: (serviceId?: string, isEmergency?: boolean) => void;
 }
 
 export const EmergencyView: React.FC<EmergencyViewProps> = ({ onSelectView, onOpenBooking }) => {
@@ -58,7 +58,7 @@ export const EmergencyView: React.FC<EmergencyViewProps> = ({ onSelectView, onOp
                   ))}
                 </ul>
               </div>
-              <button onClick={onOpenBooking} className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-2">Book Urgent Appointment <ArrowRight className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onOpenBooking(undefined, true)} className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-2">Book Urgent Appointment <ArrowRight className="w-3.5 h-3.5" /></button>
             </div>
           ))}
         </div>

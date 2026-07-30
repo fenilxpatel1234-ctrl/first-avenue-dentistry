@@ -38,7 +38,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins'>('appointments');
+  const [visitorCount, setVisitorCount] = useState(0);
   const [appointments, setAppointments] = useState<AppointmentRequest[]>([]);
   const [messages, setMessages] = useState<PatientMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,6 +103,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       fetchMessages();
       fetchAdmins();
     }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const fetchVisitors = async () => {
+      try {
+        const res = await fetch('/api/analytics/visitors');
+        const data = await res.json();
+        if (typeof data.count === 'number') setVisitorCount(data.count);
+      } catch {}
+    };
+    fetchVisitors();
+    const interval = setInterval(fetchVisitors, 10000);
+    return () => clearInterval(interval);
   }, [isLoggedIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -241,6 +256,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
           </div>
         </div>
 
+        {visitorCount > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {visitorCount} visitor{visitorCount !== 1 ? 's' : ''} online
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
           <a
             href="/api/admin/export-csv"
@@ -266,6 +288,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
           }`}
         >
           <Calendar className="w-4 h-4" /> Appointments ({appointments.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('emergency-apt')}
+          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+            activeTab === 'emergency-apt' ? 'bg-white text-red-600 shadow-md' : 'text-slate-600'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4" /> Emergency ({appointments.filter(a => a.isEmergency).length})
         </button>
 
         <button
@@ -440,7 +471,105 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
         </div>
       )}
 
-      {/* TAB 2: MESSAGES */}
+      {/* TAB 2: EMERGENCY APPOINTMENTS */}
+      {activeTab === 'emergency-apt' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4">
+            <ShieldAlert className="w-5 h-5 text-red-600" />
+            <div>
+              <h3 className="font-bold text-sm text-red-700">Emergency Appointments</h3>
+              <p className="text-xs text-red-500">These patients require priority handling</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-red-50 border-b border-red-200 text-[11px] font-bold uppercase tracking-wider text-red-600">
+                    <th className="p-4">Ref ID / Patient</th>
+                    <th className="p-4">Contact</th>
+                    <th className="p-4">Requested Service</th>
+                    <th className="p-4">Pref Date & Time</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {appointments.filter(a => a.isEmergency).length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-500">
+                        No emergency appointments.
+                      </td>
+                    </tr>
+                  ) : (
+                    appointments.filter(a => a.isEmergency).map(apt => (
+                      <tr key={apt.id} className="hover:bg-red-50/30 transition-colors bg-red-50/10">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            <span className="font-mono text-[11px] text-red-600 font-bold">{apt.id}</span>
+                          </div>
+                          <div className="font-bold text-slate-900 mt-0.5">{apt.firstName} {apt.lastName}</div>
+                          <div className="text-[10px] text-slate-400">{apt.isNewPatient ? 'New Patient' : 'Existing Patient'}</div>
+                        </td>
+
+                        <td className="p-4 space-y-0.5">
+                          <div>{apt.email}</div>
+                          <div className="text-slate-400">{apt.phone}</div>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="font-semibold text-slate-800">{apt.serviceName}</div>
+                          <div className="text-[10px] text-slate-400">Doctor: {apt.doctorPreference}</div>
+                          <div className="text-[10px] text-emerald-600">{apt.insuranceProvider}</div>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="font-semibold">{apt.confirmedDate || apt.preferredDate}</div>
+                          <div className="text-slate-400">{apt.confirmedTime || apt.preferredTimeSlot}</div>
+                        </td>
+
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            apt.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                            apt.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                            apt.status === 'Rescheduled' ? 'bg-blue-100 text-blue-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {apt.status}
+                          </span>
+                        </td>
+
+                        <td className="p-4 text-right space-x-1">
+                          <button
+                            onClick={() => {
+                              setSelectedApt(apt);
+                              setActionDate(apt.preferredDate);
+                              setActionTime(apt.preferredTimeSlot);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors"
+                          >
+                            Manage
+                          </button>
+                          <button
+                            onClick={() => handleDelete(apt.id)}
+                            className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[11px] transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: MESSAGES */}
       {activeTab === 'messages' && (
         <div className="space-y-4">
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xl space-y-4">
@@ -467,25 +596,38 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
       {/* TAB 3: ANALYTICS */}
       {activeTab === 'analytics' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Booking Requests</div>
-            <div className="text-3xl font-black text-slate-900">{appointments.length}</div>
-            <div className="text-[11px] text-emerald-500">+18% vs last month</div>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Approval Rate</div>
-            <div className="text-3xl font-black text-blue-600">
-              {appointments.length ? Math.round((appointments.filter(a => a.status === 'Approved').length / appointments.length) * 100) : 100}%
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Audience</div>
+              <div className="text-3xl font-black text-emerald-600 flex items-center gap-3">
+                {visitorCount}
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              </div>
+              <div className="text-[11px] text-slate-400">Active visitors right now</div>
             </div>
-            <div className="text-[11px] text-slate-400">2-hour avg response time</div>
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Booking Requests</div>
+              <div className="text-3xl font-black text-slate-900">{appointments.length}</div>
+              <div className="text-[11px] text-emerald-500">+18% vs last month</div>
+            </div>
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Approval Rate</div>
+              <div className="text-3xl font-black text-blue-600">
+                {appointments.length ? Math.round((appointments.filter(a => a.status === 'Approved').length / appointments.length) * 100) : 100}%
+              </div>
+              <div className="text-[11px] text-slate-400">2-hour avg response time</div>
+            </div>
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Top Requested Treatment</div>
+              <div className="text-xl font-bold text-slate-900">Porcelain Veneers</div>
+              <div className="text-[11px] text-slate-400">Followed by 3D Implants</div>
+            </div>
           </div>
-
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Top Requested Treatment</div>
-            <div className="text-xl font-bold text-slate-900">Porcelain Veneers</div>
-            <div className="text-[11px] text-slate-400">Followed by 3D Implants</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Emergency Requests</div>
+            <div className="text-3xl font-black text-red-600">{appointments.filter(a => a.isEmergency).length}</div>
+            <div className="text-[11px] text-slate-400">Requires immediate attention</div>
           </div>
         </div>
       )}

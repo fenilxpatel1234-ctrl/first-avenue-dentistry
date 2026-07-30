@@ -58,6 +58,7 @@ export interface AppointmentRequest {
   confirmedTime?: string;
   adminNotes?: string;
   createdAt: string;
+  isEmergency?: boolean;
 }
 
 export interface AdminUser {
