@@ -41,6 +41,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetCode, setResetCode] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<{ name: string; username?: string; gender?: string } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins'>('appointments');
@@ -206,6 +213,90 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   if (!isLoggedIn) {
     if (showForgotPassword) {
+      if (showResetForm) {
+        return (
+          <div className="pt-32 pb-20 max-w-md mx-auto px-4 flex items-center justify-center min-h-[70vh]">
+            <div className="w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-2xl space-y-6">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-md">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Enter Reset Code</h2>
+                <p className="text-xs text-slate-500">A 6-digit code was sent to {forgotEmail}</p>
+              </div>
+
+              {resetError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium">{resetError}</div>
+              )}
+              {resetSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 text-xs rounded-xl font-medium">{resetSuccess}</div>
+              )}
+
+              {!resetSuccess && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setResetError('');
+                  setResetSuccess('');
+                  if (resetCode.length !== 6 || !/^\d{6}$/.test(resetCode)) {
+                    setResetError('Please enter a valid 6-digit code.');
+                    return;
+                  }
+                  if (resetNewPassword.length < 6) {
+                    setResetError('Password must be at least 6 characters.');
+                    return;
+                  }
+                  if (resetNewPassword !== resetConfirmPassword) {
+                    setResetError('Passwords do not match.');
+                    return;
+                  }
+                  setResetSubmitting(true);
+                  try {
+                    const res = await fetch('/api/admin/reset-password', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ code: resetCode, newPassword: resetNewPassword })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setResetSuccess('Password reset successfully!');
+                      setTimeout(() => {
+                        setShowForgotPassword(false);
+                        setShowResetForm(false);
+                        setForgotMsg('');
+                        setResetCode('');
+                        setResetNewPassword('');
+                        setResetConfirmPassword('');
+                      }, 2000);
+                    } else {
+                      setResetError(data.error || 'Failed to reset password.');
+                    }
+                  } catch {
+                    setResetError('Network error.');
+                  } finally { setResetSubmitting(false); }
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">6-Digit Code</label>
+                    <input type="text" required maxLength={6} value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))} placeholder="Enter code" className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 tracking-[0.5em] text-center font-bold" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">New Password</label>
+                    <input type="password" required minLength={6} value={resetNewPassword} onChange={(e) => setResetNewPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" placeholder="At least 6 characters" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm Password</label>
+                    <input type="password" required minLength={6} value={resetConfirmPassword} onChange={(e) => setResetConfirmPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Repeat new password" />
+                  </div>
+                  <button type="submit" disabled={resetSubmitting} className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {resetSubmitting ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Resetting...</> : <><Lock className="w-4 h-4" /> Reset Password</>}
+                  </button>
+                  <button type="button" onClick={() => { setShowResetForm(false); setResetError(''); }} className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Back</button>
+                </form>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="pt-32 pb-20 max-w-md mx-auto px-4 flex items-center justify-center min-h-[70vh]">
           <div className="w-full bg-white rounded-3xl p-8 border border-slate-200/80 shadow-2xl space-y-6">
@@ -232,7 +323,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                   body: JSON.stringify({ email: forgotEmail })
                 });
                 const data = await res.json();
-                setForgotMsg(data.success ? '6-digit code sent! Please check your email.' : data.error || 'Failed to send reset code.');
+                if (data.success) {
+                  setForgotMsg('6-digit code sent!');
+                  setShowResetForm(true);
+                } else {
+                  setForgotMsg(data.error || 'Failed to send reset code.');
+                }
               } catch {
                 setForgotMsg('Network error.');
               } finally { setForgotLoading(false); }
