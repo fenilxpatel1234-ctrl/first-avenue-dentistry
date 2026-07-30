@@ -50,10 +50,15 @@ export const ToothCanvas: React.FC = () => {
       console.error('FBX load error:', err);
     });
 
-    const ringGeo = new THREE.TorusGeometry(2.4, 0.02, 16, 100);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.4, transparent: true });
+    const ringRadius = 1.35;
+    const ringGeo = new THREE.TorusGeometry(ringRadius, 0.05, 32, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.8, transparent: true });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = Math.PI / 3;
+    const glowRing = new THREE.Mesh(
+      new THREE.TorusGeometry(ringRadius, 0.12, 32, 64),
+      new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.15, transparent: true })
+    );
+    toothGroup.add(glowRing);
     toothGroup.add(ringMesh);
 
     scene.add(toothGroup);
@@ -80,6 +85,7 @@ export const ToothCanvas: React.FC = () => {
       toothGroup.rotation.x = Math.sin(elapsedTime * 0.5) * 0.1;
       toothGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.15;
       ringMesh.rotation.z = elapsedTime * 0.2;
+      glowRing.rotation.z = elapsedTime * 0.2;
       renderer.render(scene, camera);
     };
     animate();
