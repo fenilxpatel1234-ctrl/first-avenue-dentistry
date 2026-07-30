@@ -30,9 +30,9 @@ export const ToothCanvas: React.FC = () => {
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     loader.setDRACOLoader(dracoLoader);
 
-    loader.load('/models/mandibular_second_molar.glb', (gltf) => {
+    loader.load('/models/modelToUsed.glb', (gltf) => {
       const model = gltf.scene;
-      model.scale.set(1.4, 1.4, 1.4);
+      model.scale.set(0.015, 0.015, 0.015);
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
