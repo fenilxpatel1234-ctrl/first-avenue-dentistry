@@ -29,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -182,23 +183,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               if (item.label === 'Services') {
                 return (
                   <div key="services" className="space-y-1">
-                    <div className="text-left px-4 py-2.5 rounded-xl text-sm font-bold text-blue-600">
+                    <button
+                      onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                      className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold text-blue-600 flex items-center justify-between"
+                    >
                       Services
-                    </div>
-                    <div className="pl-4 space-y-0.5">
-                      {SERVICES_LIST.map(svc => (
-                        <button
-                          key={svc.id}
-                          onClick={() => {
-                            onSelectService(svc.id);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-2 rounded-lg text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-600 font-medium transition-colors"
-                        >
-                          {svc.label}
-                        </button>
-                      ))}
-                    </div>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${mobileServicesOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {mobileServicesOpen && (
+                      <div className="pl-4 space-y-0.5">
+                        {SERVICES_LIST.map(svc => (
+                          <button
+                            key={svc.id}
+                            onClick={() => {
+                              onSelectService(svc.id);
+                              setMobileMenuOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2 rounded-lg text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-600 font-medium transition-colors"
+                          >
+                            {svc.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               }
