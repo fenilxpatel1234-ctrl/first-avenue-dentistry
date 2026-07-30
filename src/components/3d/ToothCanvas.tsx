@@ -55,10 +55,12 @@ export const ToothCanvas: React.FC = () => {
     const ringGeo = new THREE.TorusGeometry(ringRadius, ringTube, 32, 64);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.85, transparent: true });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = Math.PI / 3;
     const glowRing = new THREE.Mesh(
       new THREE.TorusGeometry(ringRadius, ringTube * 3, 32, 64),
       new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.12, transparent: true })
     );
+    glowRing.rotation.x = Math.PI / 3;
     toothGroup.add(glowRing);
     toothGroup.add(ringMesh);
 
