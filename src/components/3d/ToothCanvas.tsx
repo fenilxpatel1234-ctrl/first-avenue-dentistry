@@ -13,7 +13,7 @@ export const ToothCanvas: React.FC = () => {
     const width = currentMount.clientWidth || 400;
     const height = currentMount.clientHeight || 400;
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 5);
+    camera.position.set(0, 0, 5.5);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(width, height);
@@ -50,13 +50,14 @@ export const ToothCanvas: React.FC = () => {
       console.error('FBX load error:', err);
     });
 
-    const ringRadius = 1.35;
-    const ringGeo = new THREE.TorusGeometry(ringRadius, 0.05, 32, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.8, transparent: true });
+    const ringRadius = 1.0;
+    const ringTube = 0.04;
+    const ringGeo = new THREE.TorusGeometry(ringRadius, ringTube, 32, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.85, transparent: true });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     const glowRing = new THREE.Mesh(
-      new THREE.TorusGeometry(ringRadius, 0.12, 32, 64),
-      new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.15, transparent: true })
+      new THREE.TorusGeometry(ringRadius, ringTube * 3, 32, 64),
+      new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.12, transparent: true })
     );
     toothGroup.add(glowRing);
     toothGroup.add(ringMesh);
