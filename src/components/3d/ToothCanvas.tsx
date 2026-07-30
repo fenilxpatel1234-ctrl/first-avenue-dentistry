@@ -50,8 +50,8 @@ export const ToothCanvas: React.FC = () => {
       console.error('FBX load error:', err);
     });
 
-    const ringRadius = 1.0;
-    const ringTube = 0.04;
+    const ringRadius = 1.5;
+    const ringTube = 0.02;
     const ringGeo = new THREE.TorusGeometry(ringRadius, ringTube, 32, 64);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.85, transparent: true });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
