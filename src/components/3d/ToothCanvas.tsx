@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 export const ToothCanvas: React.FC = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -12,7 +14,7 @@ export const ToothCanvas: React.FC = () => {
     const width = currentMount.clientWidth || 400;
     const height = currentMount.clientHeight || 400;
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 7);
+    camera.position.set(0, 0.5, 5);
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(width, height);
@@ -22,44 +24,30 @@ export const ToothCanvas: React.FC = () => {
     currentMount.appendChild(renderer.domElement);
 
     const toothGroup = new THREE.Group();
-    const crownGeo = new THREE.CylinderGeometry(1.2, 0.9, 1.8, 32, 16);
-    const pos = crownGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      if (y > 0.4) {
-        const factor = 1 + 0.15 * Math.sin(x * 3) * Math.cos(z * 3);
-        pos.setX(i, x * factor);
-        pos.setZ(i, z * factor);
-      }
-    }
-    crownGeo.computeVertexNormals();
 
-    const toothMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xf5f0eb,
-      roughness: 0.25,
-      metalness: 0.0,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.15,
+    const loader = new GLTFLoader();
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(dracoLoader);
+
+    loader.load('/models/mandibular_second_molar.glb', (gltf) => {
+      const model = gltf.scene;
+      model.scale.set(2.2, 2.2, 2.2);
+      model.position.set(0, -0.3, 0);
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.roughness = 0.25;
+            child.material.metalness = 0.0;
+          }
+        }
+      });
+      toothGroup.add(model);
+    }, undefined, (err) => {
+      console.error('GLB load error:', err);
     });
-
-    const crownMesh = new THREE.Mesh(crownGeo, toothMaterial);
-    crownMesh.castShadow = true;
-    crownMesh.receiveShadow = true;
-    toothGroup.add(crownMesh);
-
-    const root1Geo = new THREE.ConeGeometry(0.42, 2.2, 24);
-    root1Geo.translate(-0.45, -1.8, 0);
-    root1Geo.rotateZ(0.08);
-    const root1Mesh = new THREE.Mesh(root1Geo, toothMaterial);
-    toothGroup.add(root1Mesh);
-
-    const root2Geo = new THREE.ConeGeometry(0.4, 2.2, 24);
-    root2Geo.translate(0.45, -1.8, 0);
-    root2Geo.rotateZ(-0.08);
-    const root2Mesh = new THREE.Mesh(root2Geo, toothMaterial);
-    toothGroup.add(root2Mesh);
 
     const ringGeo = new THREE.TorusGeometry(2.4, 0.02, 16, 100);
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, opacity: 0.4, transparent: true });
@@ -83,7 +71,7 @@ export const ToothCanvas: React.FC = () => {
     scene.add(topSoftLight);
 
     let animationFrameId: number;
-    let clock = new THREE.Clock();
+    const clock = new THREE.Clock();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
@@ -120,7 +108,7 @@ export const ToothCanvas: React.FC = () => {
       <div ref={mountRef} className="w-full h-full absolute inset-0 cursor-grab active:cursor-grabbing" />
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-medium text-slate-700 border border-slate-200/80 shadow-sm pointer-events-none flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-        Interactive 3D Porcelain Crown
+        Interactive 3D Teeth
       </div>
     </div>
   );
