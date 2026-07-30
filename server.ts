@@ -463,7 +463,7 @@ app.patch('/api/admin/profile', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-// Forgot password - generate reset token and email
+// Forgot password - generate 6-digit code and email
 const RESET_TOKENS_FILE = path.join(DATA_DIR, 'reset_tokens.json');
 let resetTokens: ResetToken[] = loadJSON(RESET_TOKENS_FILE, []);
 function persistResetTokens() { saveJSON(RESET_TOKENS_FILE, resetTokens); }
@@ -472,6 +472,10 @@ setInterval(() => {
   resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
   persistResetTokens();
 }, 300_000);
+
+function generateResetCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
 app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
   try {
@@ -484,42 +488,39 @@ app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
     const now = Date.now();
     resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
 
-    // Check existing token for this email
-    const existing = resetTokens.find(t => t.email === email);
-    if (existing) {
-      resetTokens = resetTokens.filter(t => t.email !== email);
-    }
+    // Remove any existing code for this email
+    resetTokens = resetTokens.filter(t => t.email !== email);
 
-    const token = `reset_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const code = generateResetCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    resetTokens.push({ token, email, expiresAt });
+    resetTokens.push({ email, code, expiresAt });
     persistResetTokens();
 
-    const resetLink = `https://firstavenuedentistry.com/#reset-password?token=${token}`;
-    const subject = 'Password Reset - First Avenue Dentistry Admin';
-    const body = `You requested a password reset for your First Avenue Dentistry admin account.\n\nClick the link below to reset your password (expires in 15 minutes):\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n\n- First Avenue Dentistry Team`;
+    const resetLink = 'https://firstavenuedentistry.com/#reset-password';
+    const subject = 'Your Password Reset Code - First Avenue Dentistry Admin';
+    const body = `You requested a password reset for your First Avenue Dentistry admin account.\n\nYour 6-digit reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nGo to ${resetLink} and enter this code along with your new password.\n\nIf you did not request this, please ignore this email.\n\n- First Avenue Dentistry Team`;
 
     await deliverEmail(email, subject, body);
 
-    return res.json({ success: true, message: 'Password reset link sent to your email.' });
+    return res.json({ success: true, message: 'A 6-digit reset code has been sent to your email.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Failed to send reset email.' });
+    return res.status(500).json({ error: 'Failed to send reset code.' });
   }
 });
 
-// Reset password with token
+// Reset password with 6-digit code
 app.post('/api/admin/reset-password', (req: Request, res: Response) => {
   try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required.' });
+    const { code, newPassword } = req.body;
+    if (!code || !newPassword) return res.status(400).json({ error: 'Reset code and new password are required.' });
     if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const now = Date.now();
     resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
     persistResetTokens();
 
-    const stored = resetTokens.find(t => t.token === token);
-    if (!stored) return res.status(400).json({ error: 'Invalid or expired reset token.' });
+    const stored = resetTokens.find(t => t.code === code);
+    if (!stored) return res.status(400).json({ error: 'Invalid or expired reset code.' });
 
     const admin = adminDatabase.find(a => a.email === stored.email);
     if (!admin) return res.status(404).json({ error: 'Admin account not found.' });
@@ -527,22 +528,13 @@ app.post('/api/admin/reset-password', (req: Request, res: Response) => {
     admin.password = newPassword;
     persistAdmins();
 
-    resetTokens = resetTokens.filter(t => t.token !== token);
+    resetTokens = resetTokens.filter(t => t.code !== code);
     persistResetTokens();
 
     return res.json({ success: true, message: 'Password has been reset successfully.' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to reset password.' });
   }
-});
-
-// Check if reset token is valid
-app.get('/api/admin/check-reset-token', (req: Request, res: Response) => {
-  const token = req.query.token as string;
-  if (!token) return res.json({ valid: false });
-  resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > Date.now());
-  const valid = resetTokens.some(t => t.token === token);
-  res.json({ valid, email: valid ? resetTokens.find(t => t.token === token)?.email : null });
 });
 
 // Email log endpoint

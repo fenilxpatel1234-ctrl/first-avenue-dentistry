@@ -14,6 +14,7 @@ import { BlogView } from './views/BlogView';
 import { EmergencyView } from './views/EmergencyView';
 import { LegalView } from './views/LegalView';
 import { AdminView } from './views/AdminView';
+import { ResetPasswordView } from './views/ResetPasswordView';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<PageView>('home');
@@ -25,11 +26,12 @@ export default function App() {
   const syncViewFromHash = () => {
     const viewMap: Record<string, PageView> = {
       'admin': 'admin', 'secure-admin-login': 'admin',
+      'reset-password': 'reset-password',
       'home': 'home', 'book-online': 'book-online', 'emergency': 'emergency',
       'our-team': 'our-team', 'contact-us': 'contact-us', 'blog': 'blog',
       'legal': 'legal', 'service-detail': 'service-detail'
     };
-    const hash = window.location.hash.replace('#', '');
+    const hash = window.location.hash.replace('#', '').split('?')[0];
     const view = viewMap[hash] || 'home';
     setCurrentView(view);
   };
@@ -96,6 +98,8 @@ export default function App() {
         return <BlogView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
       case 'legal':
         return <LegalView onSelectView={handleSelectView} />;
+      case 'reset-password':
+        return <ResetPasswordView onSelectView={handleSelectView} />;
       case 'admin':
         return <AdminView onSelectView={handleSelectView} />;
       default:

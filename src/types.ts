@@ -8,7 +8,8 @@ export type PageView =
   | 'contact-us'
   | 'blog'
   | 'legal'
-  | 'admin';
+  | 'admin'
+  | 'reset-password';
 
 export interface ServiceDetail {
   id: string;
@@ -73,8 +74,8 @@ export interface AdminUser {
 }
 
 export interface ResetToken {
-  token: string;
   email: string;
+  code: string;
   expiresAt: string;
 }
 
