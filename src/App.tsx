@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { BookingModal } from './components/BookingModal';
 import { DentalConciergeAI } from './components/DentalConciergeAI';
+import { CookieConsent } from './components/CookieConsent';
 
 import { HomeView } from './views/HomeView';
 import { ServiceDetailView } from './views/ServiceDetailView';
@@ -153,6 +154,20 @@ export default function App() {
         }}
       />
 
+      <CookieConsent />
+
+      <style>{`
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-slide-up { animation: slide-up 0.4s ease-out; }
+        .animate-scale-in { animation: scale-in 0.2s ease-out; }
+      `}</style>
     </div>
   );
 }
