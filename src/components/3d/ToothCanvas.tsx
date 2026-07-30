@@ -32,7 +32,7 @@ export const ToothCanvas: React.FC = () => {
 
     loader.load('/models/mandibular_second_molar.glb', (gltf) => {
       const model = gltf.scene;
-      model.scale.set(2.2, 2.2, 2.2);
+      model.scale.set(1.4, 1.4, 1.4);
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
