@@ -64,7 +64,7 @@ export const ServiceDetailView: React.FC<ServiceDetailViewProps> = ({
 
       <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-xl space-y-6">
         <h2 className="text-2xl font-bold text-slate-900">About {service.title}</h2>
-        <p className="text-sm text-slate-600 leading-relaxed">{service.fullDescription}</p>
+        <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{service.fullDescription}</div>
       </div>
 
       <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-xl space-y-6">
