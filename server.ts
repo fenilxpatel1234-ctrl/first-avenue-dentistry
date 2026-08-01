@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor } from './src/types';
+import { initFirebase, isFirebaseReady, fbGet, fbSet } from './src/lib/firebase';
 
 dotenv.config({ path: '.env.local' });
 
@@ -121,10 +122,10 @@ if (adminDatabase.length === 0) {
   }
 }
 
-function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase); }
-function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); }
-function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); }
-function persistDoctors() { saveJSON(DOCTORS_FILE, doctorDatabase); }
+function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase); fbSet('appointments', appointmentDatabase); }
+function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); fbSet('messages', messageDatabase); }
+function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); fbSet('admins', adminDatabase); }
+function persistDoctors() { saveJSON(DOCTORS_FILE, doctorDatabase); fbSet('doctors', doctorDatabase); }
 
 // --- Admin auth: password hashing, httpOnly sessions, brute-force protection ---
 function hashPassword(password: string): string {
@@ -1140,7 +1141,53 @@ app.post('/api/ai/dental-assistant', async (req: Request, res: Response) => {
 });
 
 // Start Server or mount Vite middleware
+async function hydrateFromFirebase(): Promise<void> {
+  if (!initFirebase()) {
+    console.log('[storage] Firebase not configured - using local JSON files (data will reset on every Render redeploy).');
+    return;
+  }
+
+  // Doctors
+  const fbDoctors = await fbGet<Doctor[]>('doctors');
+  if (Array.isArray(fbDoctors)) {
+    doctorDatabase = fbDoctors;
+    saveJSON(DOCTORS_FILE, doctorDatabase);
+  } else {
+    await fbSet('doctors', doctorDatabase); // first run: push seeded data up
+  }
+
+  // Appointments
+  const fbAppointments = await fbGet<AppointmentRequest[]>('appointments');
+  if (Array.isArray(fbAppointments)) {
+    appointmentDatabase = fbAppointments;
+    saveJSON(APPOINTMENTS_FILE, appointmentDatabase);
+  } else {
+    await fbSet('appointments', appointmentDatabase);
+  }
+
+  // Messages
+  const fbMessages = await fbGet<PatientMessage[]>('messages');
+  if (Array.isArray(fbMessages)) {
+    messageDatabase = fbMessages;
+    saveJSON(MESSAGES_FILE, messageDatabase);
+  } else {
+    await fbSet('messages', messageDatabase);
+  }
+
+  // Admins (trust Firebase over local defaults once it has data)
+  const fbAdmins = await fbGet<AdminUser[]>('admins');
+  if (Array.isArray(fbAdmins) && fbAdmins.length > 0) {
+    adminDatabase = fbAdmins;
+    saveJSON(ADMINS_FILE, adminDatabase);
+  } else {
+    await fbSet('admins', adminDatabase);
+  }
+
+  console.log(`[storage] Firebase source of truth: ${doctorDatabase.length} doctors, ${appointmentDatabase.length} appointments, ${messageDatabase.length} messages, ${adminDatabase.length} admins`);
+}
+
 async function startServer() {
+  await hydrateFromFirebase();
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
