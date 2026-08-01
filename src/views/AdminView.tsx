@@ -232,6 +232,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   };
 
   const filteredAppointments = appointments.filter(a => {
+    if (a.isEmergency) return false;
+
     const matchesSearch = 
       `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -486,7 +488,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             activeTab === 'appointments' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
           }`}
         >
-          <Calendar className="w-4 h-4" /> Appointments ({appointments.length})
+          <Calendar className="w-4 h-4" /> Appointments ({appointments.filter(a => !a.isEmergency).length})
         </button>
 
         <button
@@ -1307,15 +1309,15 @@ function EmailAutomationsTab() {
 
         {!status?.smtpReady && (
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
-            <div className="font-bold text-amber-700">Gmail blocks connections from Render's servers. To send emails from production, set these environment variables on Render with your own domain mailbox:</div>
+            <div className="font-bold text-amber-700">Email server offline. Set these environment variables on Render, then deploy:</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-amber-600 font-mono">
-              <div>SMTP_HOST (e.g. mail.yourdomain.com)</div>
-              <div>SMTP_PORT (587 or 465)</div>
-              <div>SMTP_USER (your@domain.com)</div>
-              <div>SMTP_PASS (mailbox password)</div>
-              <div>EMAIL_FROM (sender address)</div>
+              <div>SMTP_HOST (smtp-relay.brevo.com)</div>
+              <div>SMTP_PORT (2525 - bypasses Render's SMTP block)</div>
+              <div>SMTP_USER (Brevo SMTP login)</div>
+              <div>SMTP_PASS (Brevo SMTP key)</div>
+              <div>EMAIL_FROM (verified sender, e.g. no-reply@yourdomain)</div>
             </div>
-            <div className="text-amber-600">On Render: Dashboard → your service → Environment → add these → Deploy. No code changes needed.</div>
+            <div className="text-amber-600">Current setup: Brevo free relay via port 2525 (Render free tier blocks ports 25/465/587). On Render: Dashboard → your service → Environment → add these → Deploy. No code changes needed.</div>
           </div>
         )}
       </div>

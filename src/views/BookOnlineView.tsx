@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { PageView } from '../types';
 import { Sparkles, Calendar, CheckCircle2, Phone } from 'lucide-react';
 import { CLINIC_SETTINGS } from '../data/mockData';
+import { COUNTRIES, getCountryByTimezone } from '../components/BookingModal';
 
 interface BookOnlineViewProps {
   onSelectView: (view: PageView) => void;
@@ -13,8 +14,45 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
     firstName: '', lastName: '', email: '', phone: '', subject: '', message: ''
   });
   const [submitted, setSubmitted] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countryCode, setCountryCode] = useState(() => getCountryByTimezone());
+  const [countrySearch, setCountrySearch] = useState('');
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countryIndex, setCountryIndex] = useState(0);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES.find(c => c.code === 'US')!;
+
+  const filteredCountries = countrySearch.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.dial.includes(countrySearch.replace(/\D/g, ''))
+      )
+    : COUNTRIES;
+
+  const selectCountry = (code: string) => {
+    setCountryCode(code);
+    setCountryOpen(false);
+    setCountrySearch('');
+    phoneInputRef.current?.focus();
+  };
+
+  const handleCountryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCountryIndex(i => Math.min(i + 1, filteredCountries.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCountryIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredCountries[countryIndex]) selectCountry(filteredCountries[countryIndex].code);
+    } else if (e.key === 'Escape') {
+      setCountryOpen(false);
+      phoneInputRef.current?.focus();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +65,7 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          phone: formData.phone,
+          phone: `${selectedCountry.dial} ${formData.phone}`,
           serviceName: formData.subject || 'General Checkup',
           notes: formData.message,
           preferredDate: new Date().toISOString().split('T')[0],
@@ -123,7 +161,36 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Phone *</label>
-                <input type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" placeholder="(555) 000-0000" />
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={countrySearch}
+                      placeholder={selectedCountry.dial}
+                      onChange={(e) => { setCountrySearch(e.target.value); setCountryOpen(true); setCountryIndex(0); }}
+                      onFocus={() => setCountryOpen(true)}
+                      onKeyDown={handleCountryKeyDown}
+                      className="w-24 px-2 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                      title="Search country code"
+                    />
+                    {countryOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-64 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-20">
+                        {filteredCountries.length === 0 && (
+                          <div className="px-3 py-2 text-xs text-slate-400">No countries found. Try another spelling.</div>
+                        )}
+                        {filteredCountries.map((c, i) => (
+                          <button key={c.code} type="button" onClick={() => selectCountry(c.code)} onMouseEnter={() => setCountryIndex(i)} className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors ${i === countryIndex ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-700'}`}>
+                            <span className="w-6 shrink-0">{c.dial}</span>
+                            <span className="truncate">{c.name}</span>
+                            <span className="ml-auto text-[10px] text-slate-400 shrink-0">{c.code}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input ref={phoneInputRef} type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="flex-1 px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500" placeholder="(555) 000-0000" />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Click the code box and type to search your country (e.g. "Canada"), use ↑ ↓ + Enter to pick.</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Subject</label>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Sparkles, User, RefreshCw, Calendar } from 'lucide-react';
+import { Bot, Send, X, Sparkles, User, RefreshCw, Calendar, Check } from 'lucide-react';
+import { COUNTRIES, getCountryByTimezone } from './BookingModal';
 
 interface DentalConciergeAIProps {
   isOpen: boolean;
@@ -52,7 +53,12 @@ export const DentalConciergeAI: React.FC<DentalConciergeAIProps> = ({
   const [bookingData, setBookingData] = useState<BookingData>({
     firstName: '', lastName: '', email: '', phone: '', date: '', time: '', notes: ''
   });
+  const [countryCode, setCountryCode] = useState(() => getCountryByTimezone());
+  const [countrySearch, setCountrySearch] = useState('');
+  const [countryListOpen, setCountryListOpen] = useState(false);
+  const [countryIndex, setCountryIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,6 +68,39 @@ export const DentalConciergeAI: React.FC<DentalConciergeAIProps> = ({
 
   const addAiMsg = (text: string) => {
     setMessages(prev => [...prev, { id: `ai-${Date.now()}`, sender: 'ai', text }]);
+  };
+
+  const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES.find(c => c.code === 'CA')!;
+
+  const filteredCountries = countrySearch.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.dial.includes(countrySearch.replace(/\D/g, ''))
+      )
+    : COUNTRIES;
+
+  const selectCountry = (code: string) => {
+    setCountryCode(code);
+    setCountryListOpen(false);
+    setCountrySearch('');
+    chatInputRef.current?.focus();
+  };
+
+  const handleCountryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setCountryIndex(i => Math.min(i + 1, filteredCountries.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setCountryIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredCountries[countryIndex]) selectCountry(filteredCountries[countryIndex].code);
+    } else if (e.key === 'Escape') {
+      setCountryListOpen(false);
+      chatInputRef.current?.focus();
+    }
   };
 
   const submitBooking = async () => {
@@ -130,14 +169,17 @@ Is there anything else I can help you with?`);
         }
         setBookingData(prev => ({ ...prev, email: value }));
         setBookingStage('phone');
-        addAiMsg(`Perfect! What's your phone number so we can reach you if needed?`);
+        addAiMsg(`Perfect! Now please select your country code (use the search box above and type to find your country) and then type your phone number so we can reach you if needed.`);
         return true;
 
-      case 'phone':
-        setBookingData(prev => ({ ...prev, phone: value }));
+      case 'phone': {
+        setBookingData(prev => ({ ...prev, phone: `${selectedCountry.dial} ${value}` }));
+        setCountryListOpen(false);
+        setCountrySearch('');
         setBookingStage('date');
-        addAiMsg(`Thanks! What date would you like to come in? (e.g., 2026-08-15 or August 15, 2026)`);
+        addAiMsg(`Thanks! Your number ${selectedCountry.dial} ${value} has been noted. What date would you like to come in? (e.g., 2026-08-15 or August 15, 2026)`);
         return true;
+      }
 
       case 'date':
         setBookingData(prev => ({ ...prev, date: value }));
@@ -298,8 +340,57 @@ Does everything look correct? Reply "yes" to submit or "no" to start over.`);
         </div>
       )}
 
+      {bookingStage === 'phone' && (
+        <div className="px-4 py-3 bg-slate-100/70 border-t border-slate-200 space-y-2">
+          <p className="text-[10px] uppercase font-semibold text-slate-400">Country Code (type to search)</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={countrySearch}
+              onChange={(e) => { setCountrySearch(e.target.value); setCountryListOpen(true); setCountryIndex(0); }}
+              onFocus={() => setCountryListOpen(true)}
+              onKeyDown={handleCountryKeyDown}
+              placeholder="Search country, code or +dial..."
+              className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={() => setCountryListOpen(!countryListOpen)}
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors whitespace-nowrap"
+            >
+              {selectedCountry.dial}
+            </button>
+          </div>
+          {countryListOpen && (
+            <div className="max-h-44 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+              {filteredCountries.length === 0 && (
+                <div className="px-3 py-2 text-xs text-slate-400">No countries found. Try another spelling.</div>
+              )}
+              {filteredCountries.map((c, i) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => selectCountry(c.code)}
+                  onMouseEnter={() => setCountryIndex(i)}
+                  className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors ${
+                    i === countryIndex ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
+                  }`}
+                >
+                  <span className="w-10 shrink-0">{c.dial}</span>
+                  <span className="truncate">{c.name}</span>
+                  <span className="ml-auto text-[10px] text-slate-400 shrink-0">{c.code}</span>
+                  {c.code === countryCode && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-[10px] text-slate-400">Use ↑ ↓ arrows + Enter to pick, or just type your number in the chat box ({selectedCountry.dial} will be used).</p>
+        </div>
+      )}
+
       <form onSubmit={handleSend} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
         <input
+          ref={chatInputRef}
           type="text"
           placeholder={bookingStage ? "Type your response..." : "Ask a question..."}
           value={input}

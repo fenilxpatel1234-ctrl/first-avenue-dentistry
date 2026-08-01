@@ -1,9 +1,12 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor } from './src/types';
+
+dotenv.config({ path: '.env.local' });
 
 const app = express();
 const PORT = 3000;
@@ -105,9 +108,9 @@ function authenticateAdmin(login: string, password: string): AdminUser | null {
 
 // Email delivery: built into the server code (SMTP via nodemailer) with file-log fallback.
 // No third-party email services are used - emails are composed and sent by our own code.
-// SMTP settings come from env vars so any mail server can be used:
+// SMTP settings come from env vars (.env.local locally, Render dashboard in production):
 //   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM
-// (Gmail works locally but blocks Render's IPs - use your own domain mailbox on production.)
+// Current setup: Brevo free relay (smtp-relay.brevo.com:587).
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
 const SMTP_USER = process.env.SMTP_USER || 'fenilxpatel2642@gmail.com';
