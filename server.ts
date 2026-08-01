@@ -262,6 +262,7 @@ function logEmailToFile(to: string, subject: string, html: string): void {
 const CLINIC_NAME = 'First Avenue Dentistry';
 const CLINIC_PHONE = '(519) 207-6890';
 const CLINIC_ADDRESS = '308 Wellington Street, St. Thomas, ON N5R 2S9';
+const SITE_URL = (process.env.SITE_URL || 'https://vantage-i.me').replace(/\/$/, '');
 
 function emailShell(innerHtml: string): string {
   return `<!DOCTYPE html>
@@ -379,7 +380,7 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
           detailRow('Location', CLINIC_ADDRESS)
         )}
         <p style="font-size:13px;color:#64748b;line-height:1.7;">Please arrive 10 minutes early. If you need to reschedule, kindly contact us at least 24 hours in advance.</p>
-        ${ctaButton('Add to Calendar', 'https://firstavenuedentistry.com/#book-online', '#059669')}
+        ${ctaButton('Add to Calendar', `${SITE_URL}/#book-online`, '#059669')}
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
       `)
     };
@@ -414,7 +415,7 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
         </div>
         ${apt.adminNotes ? summaryTable(detailRow('Notes from our team', apt.adminNotes)) : ''}
         <p style="font-size:13px;color:#64748b;line-height:1.7;">Please feel free to book another appointment through our website, or call us and we will find a time that works for you.</p>
-        ${ctaButton('Book Another Appointment', 'https://firstavenuedentistry.com/#book-online', '#b91c1c')}
+        ${ctaButton('Book Another Appointment', `${SITE_URL}/#book-online`, '#b91c1c')}
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
       `)
     };
@@ -447,7 +448,7 @@ function resetCodeEmail(code: string): { subject: string; html: string } {
     <div style="background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:24px;text-align:center;margin:20px 0;">
       <div style="font-size:36px;font-weight:800;color:#2563eb;letter-spacing:12px;">${code}</div>
     </div>
-    ${ctaButton('Reset Your Password', 'https://firstavenuedentistry.com/#reset-password')}
+    ${ctaButton('Reset Your Password', `${SITE_URL}/#reset-password`)}
     <p style="font-size:12px;color:#94a3b8;line-height:1.6;">If you did not request this, you can safely ignore this email.</p>
   `);
   return { subject, html };
@@ -486,19 +487,19 @@ function sendNewAppointmentNotification(apt: AppointmentRequest): void {
 
 // --- SEO ---
 app.get('/robots.txt', (req: Request, res: Response) => {
-  res.type('text/plain').send('User-agent: *\nAllow: /\nSitemap: https://firstavenuedentistry.com/sitemap.xml');
+  res.type('text/plain').send(`User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml`);
 });
 app.get('/sitemap.xml', (req: Request, res: Response) => {
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://firstavenuedentistry.com/</loc><priority>1.0</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#home</loc><priority>0.9</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#book-online</loc><priority>0.8</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#emergency</loc><priority>0.8</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#our-team</loc><priority>0.7</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#contact-us</loc><priority>0.7</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#blog</loc><priority>0.6</priority></url>
-  <url><loc>https://firstavenuedentistry.com/#legal</loc><priority>0.5</priority></url>
+  <url><loc>${SITE_URL}/</loc><priority>1.0</priority></url>
+  <url><loc>${SITE_URL}/#home</loc><priority>0.9</priority></url>
+  <url><loc>${SITE_URL}/#book-online</loc><priority>0.8</priority></url>
+  <url><loc>${SITE_URL}/#emergency</loc><priority>0.8</priority></url>
+  <url><loc>${SITE_URL}/#our-team</loc><priority>0.7</priority></url>
+  <url><loc>${SITE_URL}/#contact-us</loc><priority>0.7</priority></url>
+  <url><loc>${SITE_URL}/#blog</loc><priority>0.6</priority></url>
+  <url><loc>${SITE_URL}/#legal</loc><priority>0.5</priority></url>
 </urlset>`);
 });
 
@@ -698,7 +699,7 @@ app.post('/api/contact', (req: Request, res: Response) => {
   deliverEmail(newMsg.email, 'We Received Your Message - First Avenue Dentistry', emailShell(`
     ${heading('Thank you, ' + newMsg.name.split(' ')[0] + '!', 'We received your message and our team will get back to you shortly.')}
     <p style="font-size:13px;color:#64748b;line-height:1.7;">For anything urgent, please call us directly at <a href="tel:+15192076890" style="color:#2563eb;font-weight:bold;">(519) 207-6890</a>.</p>
-    ${ctaButton('Visit Our Website', 'https://firstavenuedentistry.com')}
+    ${ctaButton('Visit Our Website', SITE_URL)}
   `));
 
   return res.json({ success: true, message: 'Your message has been sent to our concierge team.' });
@@ -987,7 +988,7 @@ app.post('/api/admin/test-email', requireAdmin, (req: Request, res: Response) =>
   const email = emailShell(`
     ${heading('Test Email', 'This is a test to verify the email system is working.')}
     <p style="font-size:14px;color:#475569;line-height:1.7;">If you received this email, the First Avenue Dentistry email system is delivering messages correctly.</p>
-    ${ctaButton('Visit Our Website', 'https://firstavenuedentistry.com')}
+    ${ctaButton('Visit Our Website', SITE_URL)}
   `);
   deliverEmail(target, 'Test Email from First Avenue Dentistry', email);
   res.json({ success: true, message: `Email queued for ${target}.`, smtpReady });
