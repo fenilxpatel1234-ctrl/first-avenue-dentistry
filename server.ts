@@ -40,6 +40,7 @@ function getActiveVisitorCount(): number {
 }
 
 const DATA_DIR = path.join(process.cwd(), 'data');
+const SEEDS_DIR = path.join(DATA_DIR, 'seeds');
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
@@ -47,9 +48,15 @@ const DOCTORS_FILE = path.join(DATA_DIR, 'doctors.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-function loadJSON<T>(filePath: string, fallback: T[]): T[] {
+function loadJSON<T>(filePath: string, fallback: T[], seedFile?: string): T[] {
   try {
     if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    // Fresh deploy (e.g. Render): restore committed seed data so doctors/settings don't reset
+    if (seedFile && fs.existsSync(seedFile)) {
+      const seed: T[] = JSON.parse(fs.readFileSync(seedFile, 'utf-8'));
+      fs.writeFileSync(filePath, JSON.stringify(seed, null, 2));
+      return seed;
+    }
   } catch {}
   return fallback;
 }
@@ -62,9 +69,9 @@ const DEFAULT_ADMIN: AdminUser = {
   id: 'admin-1', name: 'Dr. Sarah Jenkins', email: 'admin@firstavenuedentistry.com', username: 'admin', password: 'AdminPassword2026!', role: 'Super Admin', createdAt: new Date().toISOString(), lastLogin: new Date().toISOString()
 };
 
-let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, []);
-let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, []);
-let doctorDatabase: Doctor[] = loadJSON(DOCTORS_FILE, []);
+let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, [], path.join(SEEDS_DIR, 'appointments.json'));
+let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, [], path.join(SEEDS_DIR, 'messages.json'));
+let doctorDatabase: Doctor[] = loadJSON(DOCTORS_FILE, [], path.join(SEEDS_DIR, 'doctors.json'));
 
 if (doctorDatabase.length === 0) {
   doctorDatabase = [

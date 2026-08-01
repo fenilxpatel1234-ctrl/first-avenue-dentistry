@@ -26,7 +26,13 @@ import {
   Trash2,
   Save,
   UserPlus,
-  Stethoscope
+  Stethoscope,
+  Phone,
+  Users,
+  Globe,
+  TrendingUp,
+  CalendarCheck,
+  AlertCircle
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -439,13 +445,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     <div className="pt-28 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       
       {/* Top Admin Bar */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-500 rounded-3xl p-6 border border-blue-800/50 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div className="absolute -bottom-14 left-1/4 w-44 h-44 bg-cyan-300/20 rounded-full blur-2xl"></div>
+        <div className="relative flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-md">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-white">
               {(() => {
                 const hour = new Date().getHours();
                 const period = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -453,27 +461,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 return `${period} ${prefix} ${loggedInUser?.name || 'Admin'}`;
               })()}
             </h1>
-            <p className="text-xs text-slate-500">Admin Management Console</p>
+            <p className="text-xs text-blue-100">First Avenue Dentistry — Admin Management Console</p>
           </div>
         </div>
 
-        {visitorCount > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {visitorCount} visitor{visitorCount !== 1 ? 's' : ''} online
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
+        <div className="relative flex flex-wrap items-center gap-2.5">
+          {visitorCount > 0 && (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/15 backdrop-blur-md border border-white/25 text-white text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              {visitorCount} visitor{visitorCount !== 1 ? 's' : ''} online
+            </div>
+          )}
           <a
             href="/api/admin/export-csv"
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white hover:bg-blue-50 text-blue-700 font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-md"
           >
             <Download className="w-4 h-4" /> Export CSV
           </a>
           <button
             onClick={() => { localStorage.removeItem('admin_session'); setIsLoggedIn(false); }}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>
@@ -481,78 +488,80 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       </div>
 
       {/* Admin Tabs */}
-      <div className="flex bg-slate-100 p-1.5 rounded-2xl gap-1 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('appointments')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'appointments' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <Calendar className="w-4 h-4" /> Appointments ({appointments.filter(a => !a.isEmergency).length})
-        </button>
+      <div className="sticky top-16 z-30 -mx-4 px-4 sm:mx-0 sm:px-0 bg-transparent">
+        <div className="flex bg-white/80 backdrop-blur-md p-1.5 rounded-2xl gap-1 overflow-x-auto border border-slate-200/80 shadow-lg scrollbar-thin">
+          <button
+            onClick={() => setActiveTab('appointments')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'appointments' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Calendar className="w-4 h-4" /> Appointments <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'appointments' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{appointments.filter(a => !a.isEmergency).length}</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('emergency-apt')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'emergency-apt' ? 'bg-white text-red-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" /> Emergency ({appointments.filter(a => a.isEmergency).length})
-        </button>
+          <button
+            onClick={() => setActiveTab('emergency-apt')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'emergency-apt' ? 'bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4" /> Emergency <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'emergency-apt' ? 'bg-white/25 text-white' : 'bg-red-50 text-red-600'}`}>{appointments.filter(a => a.isEmergency).length}</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('messages')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'messages' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" /> Messages ({messages.length})
-        </button>
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'messages' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" /> Messages <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'messages' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{messages.length}</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'analytics' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <BarChart2 className="w-4 h-4" /> Analytics & Reports
-        </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'analytics' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart2 className="w-4 h-4" /> Analytics
+          </button>
 
-        <button
-          onClick={() => setActiveTab('emails')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'emails' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <Mail className="w-4 h-4" /> Email Automations
-        </button>
+          <button
+            onClick={() => setActiveTab('emails')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'emails' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Mail className="w-4 h-4" /> Email Automations
+          </button>
 
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'settings' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <Settings className="w-4 h-4" /> Site & SEO Settings
-        </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'settings' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Settings className="w-4 h-4" /> Site & SEO
+          </button>
 
-        <button
-          onClick={() => setActiveTab('admins')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'admins' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <UserCheck className="w-4 h-4" /> Admin Accounts
-        </button>
+          <button
+            onClick={() => setActiveTab('admins')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'admins' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" /> Admins
+          </button>
 
-        <button
-          onClick={() => setActiveTab('doctors')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'doctors' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-600'
-          }`}
-        >
-          <Stethoscope className="w-4 h-4" /> Doctors ({doctors.length})
-        </button>
+          <button
+            onClick={() => setActiveTab('doctors')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'doctors' ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" /> Doctors <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'doctors' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{doctors.length}</span>
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: APPOINTMENTS MANAGEMENT */}
@@ -596,8 +605,23 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
+          {/* Stat chips */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Requests', value: appointments.length, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
+              { label: 'Pending Review', value: appointments.filter(a => !a.isEmergency && a.status === 'Pending').length, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+              { label: 'Approved', value: appointments.filter(a => !a.isEmergency && a.status === 'Approved').length, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+              { label: 'Emergency', value: appointments.filter(a => a.isEmergency).length, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+            ].map(stat => (
+              <div key={stat.label} className={`${stat.bg} border rounded-2xl p-4 shadow-sm`}>
+                <div className={`text-2xl font-black ${stat.color}`}>{stat.value}</div>
+                <div className="text-[11px] font-semibold text-slate-500 mt-0.5">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -678,21 +702,92 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
               </table>
             </div>
           </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filteredAppointments.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8 text-center text-xs text-slate-500">
+                No appointment records match search criteria.
+              </div>
+            ) : (
+              filteredAppointments.map(apt => (
+                <div key={apt.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-mono text-[10px] text-blue-600 font-bold">{apt.id}</div>
+                      <div className="font-bold text-slate-900">{apt.firstName} {apt.lastName}</div>
+                      <div className="text-[10px] text-slate-400">{apt.isNewPatient ? 'New Patient' : 'Existing Patient'}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                      apt.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                      apt.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                      apt.status === 'Rescheduled' ? 'bg-blue-100 text-blue-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {apt.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Service</div>
+                      <div className="font-semibold text-slate-800">{apt.serviceName}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">When</div>
+                      <div className="font-semibold text-slate-800">{apt.confirmedDate || apt.preferredDate}</div>
+                      <div className="text-slate-400">{apt.confirmedTime || apt.preferredTimeSlot}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Contact</div>
+                      <div className="text-slate-700 truncate">{apt.email}</div>
+                      <div className="text-slate-400 truncate">{apt.phone}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Doctor / Ins.</div>
+                      <div className="font-semibold text-slate-800 truncate">{apt.doctorPreference}</div>
+                      <div className="text-emerald-600 truncate">{apt.insuranceProvider}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedApt(apt);
+                        setActionDate(apt.preferredDate);
+                        setActionTime(apt.preferredTimeSlot);
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors"
+                    >
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => handleDelete(apt.id)}
+                      className="py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       {/* TAB 2: EMERGENCY APPOINTMENTS */}
       {activeTab === 'emergency-apt' && (
         <div className="space-y-6">
-          <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4">
-            <ShieldAlert className="w-5 h-5 text-red-600" />
+          <div className="flex items-center gap-3 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-2xl p-4 shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/30">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
             <div>
-              <h3 className="font-bold text-sm text-red-700">Emergency Appointments</h3>
-              <p className="text-xs text-red-500">These patients require priority handling</p>
+              <h3 className="font-bold text-sm">Emergency Appointments</h3>
+              <p className="text-xs text-red-100">These patients require priority handling</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -776,6 +871,77 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
               </table>
             </div>
           </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {appointments.filter(a => a.isEmergency).length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8 text-center text-xs text-slate-500">
+                No emergency appointments.
+              </div>
+            ) : (
+              appointments.filter(a => a.isEmergency).map(apt => (
+                <div key={apt.id} className="bg-white rounded-2xl border-l-4 border-red-500 border border-slate-200/80 shadow-sm p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span className="font-mono text-[10px] text-red-600 font-bold">{apt.id}</span>
+                      </div>
+                      <div className="font-bold text-slate-900">{apt.firstName} {apt.lastName}</div>
+                      <div className="text-[10px] text-slate-400">{apt.isNewPatient ? 'New Patient' : 'Existing Patient'}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                      apt.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                      apt.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
+                      apt.status === 'Rescheduled' ? 'bg-blue-100 text-blue-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {apt.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-red-50/60 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-red-400 mb-0.5">Service</div>
+                      <div className="font-semibold text-slate-800">{apt.serviceName}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">When</div>
+                      <div className="font-semibold text-slate-800">{apt.confirmedDate || apt.preferredDate}</div>
+                      <div className="text-slate-400">{apt.confirmedTime || apt.preferredTimeSlot}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Contact</div>
+                      <div className="text-slate-700 truncate">{apt.email}</div>
+                      <div className="text-slate-400 truncate">{apt.phone}</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5">
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Doctor / Ins.</div>
+                      <div className="font-semibold text-slate-800 truncate">{apt.doctorPreference}</div>
+                      <div className="text-emerald-600 truncate">{apt.insuranceProvider}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedApt(apt);
+                        setActionDate(apt.preferredDate);
+                        setActionTime(apt.preferredTimeSlot);
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors"
+                    >
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => handleDelete(apt.id)}
+                      className="py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -783,19 +949,31 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       {activeTab === 'messages' && (
         <div className="space-y-4">
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xl space-y-4">
-            <h3 className="font-bold text-lg text-slate-900">Patient Contact Form Submissions</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900">Patient Contact Form Submissions</h3>
+              <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold">{messages.length} total</span>
+            </div>
             <div className="space-y-3">
               {messages.length === 0 ? (
                 <p className="text-xs text-slate-500 py-4">No patient messages received yet.</p>
               ) : (
                 messages.map(msg => (
-                  <div key={msg.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
-                    <div className="flex justify-between font-bold text-slate-900">
-                      <span>{msg.name} ({msg.email} • {msg.phone})</span>
-                      <span className="text-[10px] text-slate-400 font-normal">{new Date(msg.date).toLocaleString()}</span>
+                  <div key={msg.id} className="flex gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs hover:shadow-md transition-shadow">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      {msg.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
-                    <div className="text-blue-600 font-semibold">{msg.subject}</div>
-                    <p className="text-slate-600 leading-relaxed">{msg.message}</p>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <span className="font-bold text-slate-900 truncate">{msg.name}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0">{new Date(msg.date).toLocaleString()}</span>
+                      </div>
+                      <div className="text-blue-600 font-semibold">{msg.subject}</div>
+                      <div className="flex flex-wrap gap-1.5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500"><Mail className="w-3 h-3 inline mr-1 -mt-0.5" />{msg.email}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-500"><Phone className="w-3 h-3 inline mr-1 -mt-0.5" />{msg.phone}</span>
+                      </div>
+                      <p className="text-slate-600 leading-relaxed pt-1">{msg.message}</p>
+                    </div>
                   </div>
                 ))
               )}
@@ -807,37 +985,99 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       {/* TAB 3: ANALYTICS */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Audience</div>
-              <div className="text-3xl font-black text-emerald-600 flex items-center gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
+              <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl"></div>
+              <Users className="w-6 h-6 text-blue-100 mb-3" />
+              <div className="text-3xl font-black flex items-center gap-3">
                 {visitorCount}
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-300 animate-pulse"></span>
               </div>
-              <div className="text-[11px] text-slate-400">Active visitors right now</div>
+              <div className="text-[11px] text-blue-100 mt-1 font-semibold">Live Audience — visitors right now</div>
             </div>
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Booking Requests</div>
-              <div className="text-3xl font-black text-slate-900">{appointments.length}</div>
-              <div className="text-[11px] text-emerald-500">+18% vs last month</div>
+            <div className="bg-gradient-to-br from-cyan-500 to-teal-400 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
+              <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl"></div>
+              <CalendarCheck className="w-6 h-6 text-teal-100 mb-3" />
+              <div className="text-3xl font-black">{appointments.length}</div>
+              <div className="text-[11px] text-teal-100 mt-1 font-semibold">Total Booking Requests</div>
+              <div className="text-[11px] text-teal-200 mt-2 inline-flex items-center gap-1 bg-white/15 px-2 py-0.5 rounded-full"><AlertCircle className="w-3 h-3" /> {appointments.filter(a => a.isEmergency).length} emergency</div>
             </div>
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Approval Rate</div>
-              <div className="text-3xl font-black text-blue-600">
+            <div className="bg-gradient-to-br from-emerald-500 to-green-400 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
+              <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl"></div>
+              <TrendingUp className="w-6 h-6 text-emerald-100 mb-3" />
+              <div className="text-3xl font-black">
                 {appointments.length ? Math.round((appointments.filter(a => a.status === 'Approved').length / appointments.length) * 100) : 100}%
               </div>
-              <div className="text-[11px] text-slate-400">2-hour avg response time</div>
+              <div className="text-[11px] text-emerald-100 mt-1 font-semibold">Approval Rate</div>
             </div>
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Top Requested Treatment</div>
-              <div className="text-xl font-bold text-slate-900">Porcelain Veneers</div>
-              <div className="text-[11px] text-slate-400">Followed by 3D Implants</div>
+            <div className="bg-gradient-to-br from-violet-500 to-purple-400 text-white p-5 rounded-3xl shadow-xl relative overflow-hidden">
+              <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl"></div>
+              <MessageSquare className="w-6 h-6 text-purple-100 mb-3" />
+              <div className="text-3xl font-black">{messages.length}</div>
+              <div className="text-[11px] text-purple-100 mt-1 font-semibold">Patient Messages</div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Emergency Requests</div>
-            <div className="text-3xl font-black text-red-600">{appointments.filter(a => a.isEmergency).length}</div>
-            <div className="text-[11px] text-slate-400">Requires immediate attention</div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Request Status Distribution</h4>
+              {(['Approved', 'Pending', 'Rescheduled', 'Rejected'] as const).map(status => {
+                const count = appointments.filter(a => a.status === status).length;
+                const pct = appointments.length ? Math.round((count / appointments.length) * 100) : 0;
+                const bar = status === 'Approved' ? 'bg-emerald-500' : status === 'Pending' ? 'bg-amber-400' : status === 'Rescheduled' ? 'bg-blue-500' : 'bg-red-500';
+                return (
+                  <div key={status} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-600">{status}</span>
+                      <span className="text-slate-400">{count} ({pct}%)</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${bar} rounded-full transition-all`} style={{ width: `${pct}%` }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Top Requested Treatments</h4>
+              {(() => {
+                const counts = new Map<string, number>();
+                appointments.forEach(a => counts.set(a.serviceName, (counts.get(a.serviceName) || 0) + 1));
+                const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+                const max = sorted.length ? sorted[0][1] : 1;
+                return sorted.length ? sorted.map(([name, count]) => (
+                  <div key={name} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700 truncate pr-2">{name}</span>
+                      <span className="text-slate-400 shrink-0">{count} request{count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" style={{ width: `${(count / max) * 100}%` }}></div>
+                    </div>
+                  </div>
+                )) : <p className="text-xs text-slate-400">No booking data yet.</p>;
+              })()}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xl">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Doctors on Staff</div>
+              <div className="text-2xl font-black text-blue-600 mt-1">{doctors.length}</div>
+            </div>
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xl">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Admin Accounts</div>
+              <div className="text-2xl font-black text-violet-600 mt-1">{admins.length}</div>
+            </div>
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xl">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Emergency Requests</div>
+              <div className="text-2xl font-black text-red-600 mt-1">{appointments.filter(a => a.isEmergency).length}</div>
+            </div>
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xl">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Awaiting Approval</div>
+              <div className="text-2xl font-black text-amber-600 mt-1">{appointments.filter(a => a.status === 'Pending').length}</div>
+            </div>
           </div>
         </div>
       )}
@@ -848,29 +1088,44 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       {/* TAB 5: SITE & SEO SETTINGS */}
       {activeTab === 'settings' && (
         <div className="space-y-6">
-          <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-6 max-w-2xl">
-            <h3 className="text-lg font-bold text-slate-900">Practice Information & SEO Meta</h3>
+          <div className="flex items-center gap-3 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-2xl p-4 shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/30">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Site & SEO Settings</h3>
+              <p className="text-xs text-slate-300">Manage clinic details and search engine information</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white p-6 lg:p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-6">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Settings className="w-5 h-5 text-blue-600" /> Practice Information & SEO Meta</h3>
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold mb-1">Clinic Name</label>
-                <input type="text" defaultValue={CLINIC_SETTINGS.clinicName} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl" />
+                <label className="block font-semibold mb-1 text-slate-600">Clinic Name</label>
+                <input type="text" defaultValue={CLINIC_SETTINGS.clinicName} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block font-semibold mb-1">Phone Number</label>
-                <input type="text" defaultValue={CLINIC_SETTINGS.phone} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl" />
+                <label className="block font-semibold mb-1 text-slate-600">Phone Number</label>
+                <input type="text" defaultValue={CLINIC_SETTINGS.phone} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block font-semibold mb-1">Meta Title</label>
-                <input type="text" defaultValue={CLINIC_SETTINGS.metaTitle} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl" />
+                <label className="block font-semibold mb-1 text-slate-600">Meta Title</label>
+                <input type="text" defaultValue={CLINIC_SETTINGS.metaTitle} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <button onClick={() => alert('Settings updated successfully!')} className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl">
+              <div>
+                <label className="block font-semibold mb-1 text-slate-600">Meta Description</label>
+                <textarea defaultValue={CLINIC_SETTINGS.metaDescription} rows={3} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-xs resize-none" />
+              </div>
+              <button onClick={() => alert('Settings updated successfully!')} className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold rounded-xl transition-colors shadow-md">
                 Save Settings
               </button>
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-6 max-w-2xl">
-            <h3 className="text-lg font-bold text-slate-900">My Profile</h3>
+          <div className="bg-white p-6 lg:p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-6">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2"><UserCheck className="w-5 h-5 text-violet-600" /> My Profile</h3>
             {profileMsg && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl">{profileMsg}</div>}
             <div className="space-y-4 text-xs">
               <div>
@@ -934,10 +1189,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 } else {
                   setProfileMsg(data.error || 'Error updating profile');
                 }
-              }} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+              }} className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold rounded-xl transition-colors shadow-md">
                 Update Profile
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -988,7 +1244,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             </div>
           )}
 
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
+          <div className="hidden md:block bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -1024,9 +1280,36 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             </table>
           </div>
 
+          {/* Mobile admin cards */}
+          <div className="md:hidden space-y-3">
+            {admins.map(admin => (
+              <div key={admin.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  {admin.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-900 text-sm truncate">{admin.name}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{admin.email}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${admin.role === 'Super Admin' ? 'bg-purple-100 text-purple-700' : admin.role === 'Admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{admin.role}</span>
+                    <span className="text-[10px] text-slate-400">{admin.username ? `@${admin.username}` : ''} • {admin.lastLogin || 'Never logged in'}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button onClick={() => setEditingAdmin(admin)} className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[11px] font-semibold transition-colors">Edit</button>
+                  <button onClick={async () => {
+                    if (!confirm(`Delete ${admin.name}?`)) return;
+                    await fetch(`/api/admin/accounts/${admin.id}`, { method: 'DELETE' });
+                    fetchAdmins();
+                  }} className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-semibold transition-colors">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {editingAdmin && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
-              <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 overflow-y-auto">
+              <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-4 my-8">
                 <h3 className="font-bold text-base text-slate-900">Edit Admin: {editingAdmin.name}</h3>
                 <div className="space-y-3">
                   <input type="text" value={editingAdmin.name} onChange={(e) => setEditingAdmin({ ...editingAdmin, name: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Name" />
@@ -1109,20 +1392,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {doctors.map(doc => (
-              <div key={doc.id} className="bg-white rounded-3xl border border-slate-200/80 shadow-xl p-6 space-y-3">
-                <div className="flex items-start gap-4">
+              <div key={doc.id} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-shadow p-6 space-y-3 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
+                <div className="flex items-start gap-4 relative">
                   {doc.image ? (
-                    <img src={doc.image} alt={doc.name} className="w-16 h-16 rounded-2xl object-cover" />
+                    <img src={doc.image} alt={doc.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-100" />
                   ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center"><Stethoscope className="w-8 h-8" /></div>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-white flex items-center justify-center shadow-md"><Stethoscope className="w-7 h-7" /></div>
                   )}
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-sm text-slate-900 truncate">{doc.name}</h4>
                     <p className="text-xs text-blue-600 font-semibold">{doc.title}{doc.credentials ? `, ${doc.credentials}` : ''}</p>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed line-clamp-3">{doc.bio || 'No bio provided.'}</p>
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <p className="text-xs text-slate-500 leading-relaxed line-clamp-3 relative">{doc.bio || 'No bio provided.'}</p>
+                <div className="flex gap-2 pt-2 border-t border-slate-100 relative">
                   <button onClick={() => setEditingDoctor(doc)} className="flex-1 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-[11px] font-bold transition-colors"><Edit3 className="w-3 h-3 inline" /> Edit</button>
                   <button onClick={async () => {
                     if (!confirm(`Delete ${doc.name}?`)) return;
@@ -1141,8 +1425,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
           </div>
 
           {editingDoctor && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
-              <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 overflow-y-auto">
+              <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-4 my-8">
                 <h3 className="font-bold text-base text-slate-900">Edit Doctor: {editingDoctor.name}</h3>
                 <div className="space-y-3">
                   <input type="text" value={editingDoctor.name} onChange={(e) => setEditingDoctor({ ...editingDoctor, name: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Full Name" />
@@ -1170,8 +1454,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
       {/* APPOINTMENT MANAGEMENT MODAL */}
       {selectedApt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 overflow-y-auto">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-6 my-8">
             <div className="flex justify-between items-center border-b border-slate-200 pb-3">
               <h3 className="font-bold text-base text-slate-900">Manage Appointment #{selectedApt.id}</h3>
               <button onClick={() => setSelectedApt(null)} className="text-slate-400 hover:text-slate-600">Close</button>
