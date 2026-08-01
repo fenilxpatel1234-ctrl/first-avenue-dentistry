@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor } from './src/types';
+import { CLINIC_SETTINGS } from './src/data/mockData';
 import { initFirebase, isFirebaseReady, fbGet, fbSet } from './src/lib/firebase';
 
 dotenv.config({ path: '.env.local' });
@@ -618,6 +619,92 @@ app.get('/api/geo', async (req: Request, res: Response) => {
     return res.json({ countryCode: result?.countryCode || '', country: result?.country || '' });
   } catch {
     return res.json({ countryCode: '', country: '' });
+  }
+});
+
+// Google Reviews (Places API) - cached 24h
+interface CachedReviews {
+  placeId: string;
+  rating: number | null;
+  totalRatings: number | null;
+  reviews: Array<{
+    authorName: string;
+    authorUrl: string;
+    photoUrl: string;
+    rating: number;
+    text: string;
+    relativeTime: string;
+  }>;
+  at: number;
+}
+let reviewsCache: CachedReviews | null = null;
+const REVIEWS_TTL_MS = 24 * 60 * 60 * 1000;
+
+app.get('/api/reviews', async (req: Request, res: Response) => {
+  const key = process.env.GOOGLE_PLACES_API_KEY;
+  if (!key) return res.status(503).json({ error: 'not_configured' });
+
+  if (reviewsCache && Date.now() - reviewsCache.at < REVIEWS_TTL_MS) {
+    const { at, ...data } = reviewsCache;
+    return res.json(data);
+  }
+
+  try {
+    let placeId = process.env.GOOGLE_PLACE_ID || '';
+    if (!placeId) {
+      const query = `First Avenue Family Dentistry ${CLINIC_SETTINGS.address}`;
+      const search = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${key}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const searchJson = await search.json() as { status?: string; results?: Array<{ place_id?: string }> };
+      if (searchJson.status !== 'OK' || !searchJson.results?.[0]?.place_id) {
+        return res.status(502).json({ error: 'place_not_found', detail: searchJson.status });
+      }
+      placeId = searchJson.results[0].place_id;
+    }
+
+    const details = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=rating,user_ratings_total,reviews&language=en&key=${key}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    const json = await details.json() as {
+      status?: string;
+      result?: {
+        rating?: number;
+        user_ratings_total?: number;
+        reviews?: Array<{
+          author_name?: string;
+          author_url?: string;
+          profile_photo_url?: string;
+          rating?: number;
+          text?: string;
+          relative_time_description?: string;
+        }>;
+      };
+    };
+    if (json.status !== 'OK' || !json.result) {
+      return res.status(502).json({ error: 'details_failed', detail: json.status });
+    }
+
+    reviewsCache = {
+      placeId,
+      rating: json.result.rating ?? null,
+      totalRatings: json.result.user_ratings_total ?? null,
+      reviews: (json.result.reviews || []).map((r) => ({
+        authorName: r.author_name || 'Google User',
+        authorUrl: r.author_url || '',
+        photoUrl: r.profile_photo_url || '',
+        rating: r.rating || 5,
+        text: (r.text || '').trim(),
+        relativeTime: r.relative_time_description || ''
+      })),
+      at: Date.now()
+    };
+    const { at, ...data } = reviewsCache;
+    return res.json(data);
+  } catch (err: any) {
+    return res.status(502).json({ error: 'fetch_failed', detail: err?.message || '' });
   }
 });
 
