@@ -47,17 +47,17 @@ export const SERVICE_DETAILS: Record<string, ServiceDetail> = {
 };
 
 export const HOME_FEATURES = [
-  { title: "Comfort-first care", description: "We prioritize your comfort with a gentle approach and relaxing environment.", image: "https://static.wixstatic.com/media/2a5871_f75ac588ee2045fd8dee936181e78335~mv2.png" },
-  { title: "Family-friendly", description: "A welcoming environment for patients of all ages, from children to seniors.", image: "https://static.wixstatic.com/media/2a5871_534662cc62d64d69b239750c1e84aa38~mv2.png" },
-  { title: "Family-friendly", description: "Convenient scheduling for the whole family in one location.", image: "https://static.wixstatic.com/media/2a5871_82e8a36d59654ff19b7d915a6b9037a4~mv2.png" },
-  { title: "Open 6 days a week", description: "Monday to Friday 9am-6pm, Saturday 9am-5pm. We're here when you need us.", image: "https://static.wixstatic.com/media/2a5871_4a8dc2a469c5410ca826805966e156ab~mv2.png" }
+  { title: "Comfort-first care", description: "Modern, welcoming environment built around you.", image: "https://static.wixstatic.com/media/2a5871_f75ac588ee2045fd8dee936181e78335~mv2.png" },
+  { title: "Family-friendly", description: "All ages, from first visits to senior care.", image: "https://static.wixstatic.com/media/2a5871_534662cc62d64d69b239750c1e84aa38~mv2.png" },
+  { title: "Complete care", description: "General, cosmetic, emergency & more — all in one location.", image: "https://static.wixstatic.com/media/2a5871_82e8a36d59654ff19b7d915a6b9037a4~mv2.png" },
+  { title: "Open 6 days a week", description: "Monday to Saturday — weekend hours included.", image: "https://static.wixstatic.com/media/2a5871_4a8dc2a469c5410ca826805966e156ab~mv2.png" }
 ];
 
 export const SERVICE_CATEGORIES_HOME = [
-  { id: "general", title: "General Dentistry", image: "https://static.wixstatic.com/media/2a5871_648ce195d771443cb085750d5b723df6~mv2.png", items: ["Crowns & Bridges", "Wisdom Teeth Extraction", "Oral Surgery", "Teeth Cleaning", "Root Canals", "Implants"] },
-  { id: "cosmetic", title: "Cosmetic Dentistry", image: "https://static.wixstatic.com/media/2a5871_cdc1694d568c49dc94e0ebcc9f934022~mv2.png", items: ["Orthodontics", "Veneers", "Teeth Whitening"] },
-  { id: "childrens", title: "Children's Dentistry", image: "https://static.wixstatic.com/media/2a5871_3d3719093388497985747a34ac547818~mv2.png", items: ["Pediatric Checkups", "Dental Sealants", "Fluoride Treatments"] },
-  { id: "additional", title: "Additional Services", image: "https://static.wixstatic.com/media/2a5871_82e8a36d59654ff19b7d915a6b9037a4~mv2.png", items: ["Sedation Sleep Dentistry", "Oral Cancer Screening"] }
+  { id: "general", title: "General Dentistry", image: "https://static.wixstatic.com/media/2a5871_648ce195d771443cb085750d5b723df6~mv2.png", items: ["Composite Filling", "Dental Bonding", "Dental Bridge", "Dental Crown", "Dental Extractions", "Dental Implant", "Dentures", "Root Canal", "Teeth Cleaning"] },
+  { id: "cosmetic", title: "Cosmetic Dentistry", image: "https://static.wixstatic.com/media/2a5871_cdc1694d568c49dc94e0ebcc9f934022~mv2.png", items: ["Dental Veneers", "Invisalign", "Orthodontics", "Veneers", "Teeth Whitening"] },
+  { id: "childrens", title: "Children's Dentistry", image: "https://static.wixstatic.com/media/2a5871_3d3719093388497985747a34ac547818~mv2.png", items: ["Child's First Appointment", "Orthodontics for Teens", "Sealants and Fluoride", "Teeth Cleaning for Kids"] },
+  { id: "additional", title: "Additional Services", image: "https://static.wixstatic.com/media/2a5871_82e8a36d59654ff19b7d915a6b9037a4~mv2.png", items: ["Sport Guards", "TMJ Therapy", "Tooth Sensitivity Treatment", "Wisdom Teeth Extraction"] }
 ];
 
 export const ABOUT_VALUES = [

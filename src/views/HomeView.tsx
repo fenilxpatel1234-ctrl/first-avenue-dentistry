@@ -39,8 +39,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
               </h1>
 
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mb-8">
-                Experience compassionate, family-friendly dentistry at First Avenue Dentistry in St. Thomas, ON. 
-                From routine cleanings to cosmetic transformations, we're here for every member of your family.
+                Looking for a dental team that makes your comfort and care a priority? Our friendly professionals provide comprehensive general and cosmetic dentistry in a modern, welcoming environment. Whether it's a routine checkup or a smile makeover, we're here to make your visit easy and stress-free.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -59,6 +58,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
                   Ask AI Assistant
                 </button>
               </div>
+              <a
+                href={`mailto:${CLINIC_SETTINGS.email}?subject=BOOKING%20FROM%20FIRST%20AVENUE%20DENTIST`}
+                className="inline-block mt-4 text-sm text-blue-600 font-semibold hover:underline"
+              >
+                Or Email — {CLINIC_SETTINGS.email}
+              </a>
             </div>
 
             {/* 3D Tooth - Desktop only */}
@@ -95,7 +100,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
         <div className="text-center mb-12 space-y-3">
           <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">What We Do</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Comprehensive Dental Services
+            Dental Services
           </h2>
         </div>
 
@@ -124,24 +129,24 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white text-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80 grid grid-cols-1 lg:grid-cols-2">
           <div className="p-8 sm:p-12 space-y-6">
-            <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">About Us</span>
+            <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">Family-First Dentist</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Family-First Dentist in St. Thomas
+              The Leading Family Dental Care Clinic in St. Thomas, ON
             </h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              At First Avenue Dentistry, we believe that a healthy smile is the foundation of overall well-being. 
-              Our dedicated team is committed to providing personalized, gentle care for every member of your family 
-              in a warm and welcoming environment.
+              Are you on the lookout for comprehensive dental care in St. Thomas, ON? Head over to First Avenue Dentistry today where your dental health and comfort are our top priorities.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
-              From preventive checkups to advanced restorative treatments, we combine modern technology with 
-              compassionate care to ensure your dental experience is comfortable and stress-free.
+              As one of the leading dental care clinics in St. Thomas, ON, we take pride in our unparalleled expertise and incomparable experience. We understand the importance of a healthy smile and the peace of mind that comes with knowing you have access to emergency dental services when you need them the most.
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Our team of dental care experts is committed to excellence and goes beyond just emergency care; we offer a wide range of services encompassing family dentistry and cosmetic dentistry to ensure every aspect of your dental health is addressed with compassion. So what are you waiting for? Head on over to our family dental clinic today for customized dental treatment.
             </p>
             <button
               onClick={() => onSelectView('our-team')}
               className="px-6 py-3 rounded-full bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
             >
-              Learn More About Us <ChevronRight className="w-4 h-4" />
+              About Our Practice <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           <div className="h-80 lg:h-auto bg-slate-100">
@@ -156,9 +161,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
 
       {/* THREE PILLARS OF CARE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 space-y-3">
+          <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">We Offer</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Three Pillars of Care
+            Three Pillars of Care for Every Patient
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -181,15 +187,15 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl p-8 sm:p-12 text-white shadow-2xl">
           <div className="max-w-2xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Request an Appointment</h2>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Request An Appointment Today</h2>
             <p className="text-sm text-blue-100">
-              Fill out the form below and our team will reach out to confirm your appointment within the same business day.
+              Takes 30 seconds — we'll confirm by phone.
             </p>
             <button
               onClick={onOpenBooking}
               className="px-8 py-4 rounded-full bg-blue-700 text-white font-bold text-sm hover:bg-blue-800 transition-colors shadow-lg inline-flex items-center gap-2"
             >
-              <Calendar className="w-4 h-4" /> Book Online Now
+              <Calendar className="w-4 h-4" /> Request an Appointment
             </button>
             <p className="text-xs text-blue-200">
               Or call us at <a href={`tel:${CLINIC_SETTINGS.phone.replace(/\D/g, '')}`} className="font-bold underline">{CLINIC_SETTINGS.phone}</a>
