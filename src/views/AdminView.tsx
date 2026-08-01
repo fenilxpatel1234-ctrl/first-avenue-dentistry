@@ -91,7 +91,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const fetchAppointments = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/appointments');
+      const res = await fetch('/api/appointments', { credentials: 'same-origin' });
+      if (handleAuthFailure(res)) return;
       const data = await res.json();
       if (Array.isArray(data)) {
         setAppointments(data);
@@ -105,7 +106,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch('/api/contact');
+      const res = await fetch('/api/contact', { credentials: 'same-origin' });
+      if (handleAuthFailure(res)) return;
       const data = await res.json();
       if (Array.isArray(data)) {
         setMessages(data);
@@ -117,7 +119,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   const fetchAdmins = async () => {
     try {
-      const res = await fetch('/api/admin/accounts');
+      const res = await fetch('/api/admin/accounts', { credentials: 'same-origin' });
+      if (handleAuthFailure(res)) return;
       const data = await res.json();
       if (Array.isArray(data)) setAdmins(data);
     } catch {}
@@ -131,19 +134,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     } catch {}
   };
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('admin_session');
-    if (saved) {
-      try {
-        const session = JSON.parse(saved);
-        if (session.token && session.user) {
-          setIsLoggedIn(true);
-          setLoggedInUser(session.user);
-        }
-      } catch {}
+  // Session is server-side (httpOnly cookie) and NOT persisted client-side,
+  // so the login page always appears when opening #admin.
+  const handleAuthFailure = (res: Response): boolean => {
+    if (res.status === 401) {
+      setIsLoggedIn(false);
+      setLoggedInUser(null);
+      setLoginError('Session expired. Please sign in again.');
+      return true;
     }
-  }, []);
+    return false;
+  };
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -186,13 +187,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: adminLogin, password: adminPassword })
       });
 
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('admin_session', JSON.stringify({ token: data.token, user: data.user }));
         setIsLoggedIn(true);
         setLoggedInUser(data.user || null);
       } else {
@@ -201,6 +202,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     } catch (err) {
       setLoginError('Authentication server error');
     }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+    } catch {}
+    setIsLoggedIn(false);
+    setLoggedInUser(null);
   };
 
   const handleUpdateStatus = async (id: string, newStatus: AppointmentRequest['status']) => {
@@ -479,7 +488,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             <Download className="w-4 h-4" /> Export CSV
           </a>
           <button
-            onClick={() => { localStorage.removeItem('admin_session'); setIsLoggedIn(false); }}
+            onClick={handleSignOut}
             className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
           >
             <LogOut className="w-4 h-4" /> Sign Out
@@ -1161,7 +1170,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 setProfileMsg('');
                 if (profileForm.newPassword && profileForm.newPassword !== profileForm.confirmPassword) { setProfileMsg('Passwords do not match'); return; }
                 const res = await fetch('/api/admin/profile', {
-                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     id: loggedInUser?.id,
                     name: profileForm.name,
@@ -1174,16 +1183,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                  const updated = { id: data.user.id, name: data.user.name, username: data.user.username, gender: data.user.gender };
-                  setLoggedInUser(updated);
-                  const saved = localStorage.getItem('admin_session');
-                  if (saved) {
-                    try {
-                      const session = JSON.parse(saved);
-                      session.user = updated;
-                      localStorage.setItem('admin_session', JSON.stringify(session));
-                    } catch {}
-                  }
+                  setLoggedInUser({ id: data.user.id, name: data.user.name, username: data.user.username, gender: data.user.gender });
                   setProfileForm(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
                   setProfileMsg('Profile updated successfully! Your changes are now live.');
                 } else {

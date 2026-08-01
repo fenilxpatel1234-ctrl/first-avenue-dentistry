@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
@@ -11,7 +12,24 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
+
+// --- Security headers ---
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  const host = (req.headers.host || '').toLowerCase();
+  const isLocal = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+  if (!isLocal) {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src https://www.google.com https://maps.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+    );
+  }
+  next();
+});
 
 // --- Live Visitor Tracking ---
 const visitorHits = new Map<string, number>();
@@ -108,10 +126,88 @@ function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); }
 function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); }
 function persistDoctors() { saveJSON(DOCTORS_FILE, doctorDatabase); }
 
+// --- Admin auth: password hashing, httpOnly sessions, brute-force protection ---
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.createHash('sha256').update(salt + password).digest('hex');
+  return `sha256$${salt}$${hash}`;
+}
+
+function passwordMatches(stored: string, password: string): boolean {
+  if (!stored) return false;
+  if (stored.startsWith('sha256$')) {
+    const parts = stored.split('$');
+    if (parts.length !== 3) return false;
+    const candidate = crypto.createHash('sha256').update(parts[1] + password).digest('hex');
+    return candidate === parts[2];
+  }
+  return stored === password; // legacy plaintext (upgraded to hash on next login)
+}
+
 // Simple auth helper (accepts email or username)
 function authenticateAdmin(login: string, password: string): AdminUser | null {
-  return adminDatabase.find(a => (a.email === login || a.username === login) && a.password === password) || null;
+  const admin = adminDatabase.find(a => a.email === login || a.username === login) || null;
+  if (!admin || !passwordMatches(admin.password, password)) return null;
+  // Upgrade legacy plaintext passwords to salted hashes
+  if (!admin.password.startsWith('sha256$')) {
+    admin.password = hashPassword(password);
+    persistAdmins();
+  }
+  return admin;
 }
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  return (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0])?.trim() || req.ip || 'unknown';
+}
+
+// In-memory admin sessions (httpOnly cookie; no localStorage on the client)
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const adminSessions = new Map<string, { adminId: string; expiresAt: number }>();
+
+function parseCookies(req: Request): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of (req.headers.cookie || '').split(';')) {
+    const idx = part.indexOf('=');
+    if (idx > 0) out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
+  }
+  return out;
+}
+
+function createSession(adminId: string): string {
+  const token = crypto.randomBytes(32).toString('hex');
+  adminSessions.set(token, { adminId, expiresAt: Date.now() + SESSION_TTL_MS });
+  return token;
+}
+
+function clearSession(req: Request, res: Response) {
+  const token = parseCookies(req)['admin_session'];
+  if (token) adminSessions.delete(token);
+  res.clearCookie('admin_session', { path: '/' });
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, s] of adminSessions) {
+    if (s.expiresAt < now) adminSessions.delete(token);
+  }
+}, 60_000);
+
+function requireAdmin(req: Request, res: Response, next: express.NextFunction) {
+  const token = parseCookies(req)['admin_session'];
+  const session = token ? adminSessions.get(token) : undefined;
+  if (!session || session.expiresAt < Date.now()) {
+    if (token) adminSessions.delete(token);
+    return res.status(401).json({ error: 'Authentication required. Please sign in.' });
+  }
+  (req as any).adminId = session.adminId;
+  next();
+}
+
+// Brute-force protection: 5 failed logins per IP locks for 15 minutes
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
 // Email delivery: built into the server code (SMTP via nodemailer) with file-log fallback.
 // No third-party email services are used - emails are composed and sent by our own code.
@@ -471,13 +567,13 @@ app.post('/api/appointments', (req: Request, res: Response) => {
   }
 });
 
-// Admin: Get all appointments
-app.get('/api/appointments', (req: Request, res: Response) => {
+// Admin: Get all appointments (requires sign-in)
+app.get('/api/appointments', requireAdmin, (req: Request, res: Response) => {
   res.json(appointmentDatabase);
 });
 
 // Admin: Update appointment status / reschedule / notes
-app.patch('/api/appointments/:id', (req: Request, res: Response) => {
+app.patch('/api/appointments/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   const { status, assignedDoctor, confirmedDate, confirmedTime, adminNotes } = req.body;
 
@@ -511,15 +607,15 @@ app.patch('/api/appointments/:id', (req: Request, res: Response) => {
 });
 
 // Admin: Delete appointment
-app.delete('/api/appointments/:id', (req: Request, res: Response) => {
+app.delete('/api/appointments/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   appointmentDatabase = appointmentDatabase.filter(a => a.id !== id);
   persistAppointments();
   return res.json({ success: true, message: 'Appointment record removed.' });
 });
 
-// Export CSV Endpoint
-app.get('/api/admin/export-csv', (req: Request, res: Response) => {
+// Export CSV Endpoint (requires sign-in)
+app.get('/api/admin/export-csv', requireAdmin, (req: Request, res: Response) => {
   const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Date', 'Time Slot', 'Service', 'Doctor', 'Status', 'Insurance'];
   const rows = appointmentDatabase.map(a => [
     a.id,
@@ -604,7 +700,8 @@ app.post('/api/contact', (req: Request, res: Response) => {
   return res.json({ success: true, message: 'Your message has been sent to our concierge team.' });
 });
 
-app.get('/api/contact', (req: Request, res: Response) => {
+// Admin: Get all contact messages (requires sign-in)
+app.get('/api/contact', requireAdmin, (req: Request, res: Response) => {
   res.json(messageDatabase);
 });
 
@@ -613,7 +710,7 @@ app.get('/api/doctors', (req: Request, res: Response) => {
   res.json(doctorDatabase);
 });
 
-app.post('/api/doctors', (req: Request, res: Response) => {
+app.post('/api/doctors', requireAdmin, (req: Request, res: Response) => {
   const { name, title, credentials, bio, image } = req.body;
   if (!name) return res.status(400).json({ error: 'Doctor name is required.' });
   const newDoctor: Doctor = {
@@ -630,7 +727,7 @@ app.post('/api/doctors', (req: Request, res: Response) => {
   res.json({ success: true, doctor: newDoctor });
 });
 
-app.patch('/api/doctors/:id', (req: Request, res: Response) => {
+app.patch('/api/doctors/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   const idx = doctorDatabase.findIndex(d => d.id === id);
   if (idx === -1) return res.status(404).json({ error: 'Doctor not found.' });
@@ -644,7 +741,7 @@ app.patch('/api/doctors/:id', (req: Request, res: Response) => {
   res.json({ success: true, doctor: doctorDatabase[idx] });
 });
 
-app.delete('/api/doctors/:id', (req: Request, res: Response) => {
+app.delete('/api/doctors/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   doctorDatabase = doctorDatabase.filter(d => d.id !== id);
   persistDoctors();
@@ -653,36 +750,62 @@ app.delete('/api/doctors/:id', (req: Request, res: Response) => {
 
 // Admin Auth Endpoint (accepts email or username)
 app.post('/api/admin/login', (req: Request, res: Response) => {
+  const ip = getClientIp(req);
+  const attempt = loginAttempts.get(ip);
+  if (attempt && attempt.lockedUntil > Date.now()) {
+    const mins = Math.ceil((attempt.lockedUntil - Date.now()) / 60000);
+    return res.status(429).json({ error: `Too many failed attempts. Try again in ${mins} minute(s).` });
+  }
+
   const { email, username, password } = req.body;
   const login = email || username || '';
   const admin = authenticateAdmin(login, password);
   if (admin) {
+    loginAttempts.delete(ip);
     admin.lastLogin = new Date().toISOString();
     persistAdmins();
+    const token = createSession(admin.id);
+    const forwardedProto = (req.headers['x-forwarded-proto'] as string) || '';
+    const secure = req.secure || forwardedProto.includes('https');
+    res.setHeader('Set-Cookie', `admin_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${secure ? '; Secure' : ''}`);
     return res.json({
       success: true,
-      token: `jwt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       user: { id: admin.id, email: admin.email, username: admin.username, role: admin.role, name: admin.name, gender: admin.gender }
     });
   }
+
+  const cur = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  cur.count += 1;
+  if (cur.count >= LOGIN_MAX_FAILURES) {
+    loginAttempts.set(ip, { count: 0, lockedUntil: Date.now() + LOGIN_LOCK_MS });
+    return res.status(429).json({ error: 'Too many failed attempts. Account locked for 15 minutes.' });
+  }
+  loginAttempts.set(ip, cur);
   return res.status(401).json({ error: 'Invalid credentials.' });
 });
 
+// Admin: Sign out (clears the httpOnly session cookie)
+app.post('/api/admin/logout', (req: Request, res: Response) => {
+  clearSession(req, res);
+  res.json({ success: true });
+});
+
 // Admin: Get all admin accounts
-app.get('/api/admin/accounts', (req: Request, res: Response) => {
+app.get('/api/admin/accounts', requireAdmin, (req: Request, res: Response) => {
   const safe = adminDatabase.map(({ password, ...rest }) => rest);
   res.json(safe);
 });
 
 // Admin: Create admin account
-app.post('/api/admin/accounts', (req: Request, res: Response) => {
+app.post('/api/admin/accounts', requireAdmin, (req: Request, res: Response) => {
   const { name, email, username, password, role, gender } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required.' });
   if (adminDatabase.find(a => a.email === email)) return res.status(400).json({ error: 'Email already exists.' });
   if (username && adminDatabase.find(a => a.username === username)) return res.status(400).json({ error: 'Username already exists.' });
   const newAdmin: AdminUser = {
     id: `admin-${Date.now().toString(36)}`,
-    name, email, username, password,
+    name, email, username,
+    password: hashPassword(password),
     role: role || 'Admin',
     gender: gender || undefined,
     createdAt: new Date().toISOString()
@@ -694,7 +817,7 @@ app.post('/api/admin/accounts', (req: Request, res: Response) => {
 });
 
 // Admin: Update admin account
-app.patch('/api/admin/accounts/:id', (req: Request, res: Response) => {
+app.patch('/api/admin/accounts/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   const idx = adminDatabase.findIndex(a => a.id === id);
   if (idx === -1) return res.status(404).json({ error: 'Admin not found.' });
@@ -702,7 +825,7 @@ app.patch('/api/admin/accounts/:id', (req: Request, res: Response) => {
   if (name) adminDatabase[idx].name = name;
   if (email) adminDatabase[idx].email = email;
   if (username !== undefined) adminDatabase[idx].username = username;
-  if (password) adminDatabase[idx].password = password;
+  if (password) adminDatabase[idx].password = hashPassword(password);
   if (role) adminDatabase[idx].role = role;
   if (gender !== undefined) adminDatabase[idx].gender = gender;
   persistAdmins();
@@ -711,7 +834,7 @@ app.patch('/api/admin/accounts/:id', (req: Request, res: Response) => {
 });
 
 // Admin: Delete admin account
-app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
+app.delete('/api/admin/accounts/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
   adminDatabase = adminDatabase.filter(a => a.id !== id);
   persistAdmins();
@@ -719,16 +842,16 @@ app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
 });
 
 // Admin: Update own profile
-app.patch('/api/admin/profile', (req: Request, res: Response) => {
+app.patch('/api/admin/profile', requireAdmin, (req: Request, res: Response) => {
   const { id, name, email, username, gender, currentPassword, newPassword } = req.body;
   const admin = adminDatabase.find(a => a.id === id);
   if (!admin) return res.status(404).json({ error: 'No admin found.' });
-  if (currentPassword && admin.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect.' });
+  if (currentPassword && !passwordMatches(admin.password, currentPassword)) return res.status(401).json({ error: 'Current password is incorrect.' });
   if (name) admin.name = name;
   if (email) admin.email = email;
   if (username !== undefined) admin.username = username;
   if (gender !== undefined) admin.gender = gender;
-  if (newPassword) admin.password = newPassword;
+  if (newPassword) admin.password = hashPassword(newPassword);
   persistAdmins();
   const { password: _, ...safe } = admin;
   res.json({ success: true, user: safe });
@@ -744,6 +867,11 @@ setInterval(() => {
   persistResetTokens();
 }, 300_000);
 
+// Anti-abuse: max 3 reset codes per email per 15 minutes
+const forgotRequests = new Map<string, number[]>();
+const FORGOT_MAX_PER_WINDOW = 3;
+const FORGOT_WINDOW_MS = 15 * 60 * 1000;
+
 function generateResetCode(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -752,11 +880,19 @@ app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required.' });
+    const key = String(email).toLowerCase();
+    const now = Date.now();
+    const recent = (forgotRequests.get(key) || []).filter(t => now - t < FORGOT_WINDOW_MS);
+    if (recent.length >= FORGOT_MAX_PER_WINDOW) {
+      return res.status(429).json({ error: 'Too many reset requests. Try again later.' });
+    }
+    recent.push(now);
+    forgotRequests.set(key, recent);
+
     const admin = adminDatabase.find(a => a.email === email);
     if (!admin) return res.status(404).json({ error: 'No account found with that email.' });
 
     // Clean up expired tokens
-    const now = Date.now();
     resetTokens = resetTokens.filter(t => new Date(t.expiresAt).getTime() > now);
 
     // Remove any existing code for this email
@@ -777,8 +913,15 @@ app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
 });
 
 // Reset password with 6-digit code
+const resetAttempts = new Map<string, { count: number; lockedUntil: number }>();
 app.post('/api/admin/reset-password', (req: Request, res: Response) => {
   try {
+    const ip = getClientIp(req);
+    const attempt = resetAttempts.get(ip);
+    if (attempt && attempt.lockedUntil > Date.now()) {
+      return res.status(429).json({ error: 'Too many attempts. Try again later.' });
+    }
+
     const { code, newPassword } = req.body;
     if (!code || !newPassword) return res.status(400).json({ error: 'Reset code and new password are required.' });
     if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
@@ -788,12 +931,22 @@ app.post('/api/admin/reset-password', (req: Request, res: Response) => {
     persistResetTokens();
 
     const stored = resetTokens.find(t => t.code === code);
-    if (!stored) return res.status(400).json({ error: 'Invalid or expired reset code.' });
+    if (!stored) {
+      const cur = resetAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+      cur.count += 1;
+      if (cur.count >= 10) {
+        resetAttempts.set(ip, { count: 0, lockedUntil: Date.now() + LOGIN_LOCK_MS });
+        return res.status(429).json({ error: 'Too many attempts. Try again later.' });
+      }
+      resetAttempts.set(ip, cur);
+      return res.status(400).json({ error: 'Invalid or expired reset code.' });
+    }
+    resetAttempts.delete(ip);
 
     const admin = adminDatabase.find(a => a.email === stored.email);
     if (!admin) return res.status(404).json({ error: 'Admin account not found.' });
 
-    admin.password = newPassword;
+    admin.password = hashPassword(newPassword);
     persistAdmins();
 
     resetTokens = resetTokens.filter(t => t.code !== code);
@@ -805,14 +958,14 @@ app.post('/api/admin/reset-password', (req: Request, res: Response) => {
   }
 });
 
-// Email log endpoint
-app.get('/api/admin/email-log', (req: Request, res: Response) => {
+// Email log endpoint (requires sign-in)
+app.get('/api/admin/email-log', requireAdmin, (req: Request, res: Response) => {
   const logs = loadJSON(EMAIL_LOG_FILE, []);
   res.json(logs);
 });
 
-// Email status endpoint
-app.get('/api/admin/email-status', (req: Request, res: Response) => {
+// Email status endpoint (requires sign-in)
+app.get('/api/admin/email-status', requireAdmin, (req: Request, res: Response) => {
   res.json({
     smtpReady,
     smtpError,
@@ -823,8 +976,8 @@ app.get('/api/admin/email-status', (req: Request, res: Response) => {
   });
 });
 
-// Test email endpoint
-app.post('/api/admin/test-email', (req: Request, res: Response) => {
+// Test email endpoint (requires sign-in)
+app.post('/api/admin/test-email', requireAdmin, (req: Request, res: Response) => {
   const { to } = req.body;
   const target = to || 'fenilxpatel2642@gmail.com';
   const email = emailShell(`
