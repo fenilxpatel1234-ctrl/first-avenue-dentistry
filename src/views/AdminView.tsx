@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PageView, AppointmentRequest, PatientMessage, AdminUser, Doctor } from '../types';
+import { PageView, AppointmentRequest, PatientMessage, AdminUser, Doctor, SiteReview } from '../types';
 import { CLINIC_SETTINGS } from '../data/mockData';
 import { 
   Lock, 
@@ -32,7 +32,9 @@ import {
   Globe,
   TrendingUp,
   CalendarCheck,
-  AlertCircle
+  AlertCircle,
+  Star,
+  Quote
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -57,7 +59,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<{ id: string; name: string; username?: string; gender?: string } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins' | 'doctors'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'emergency-apt' | 'messages' | 'analytics' | 'emails' | 'settings' | 'admins' | 'doctors' | 'reviews'>('appointments');
   const [visitorCount, setVisitorCount] = useState(0);
   const [appointments, setAppointments] = useState<AppointmentRequest[]>([]);
   const [messages, setMessages] = useState<PatientMessage[]>([]);
@@ -80,6 +82,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [newDoctor, setNewDoctor] = useState({ name: '', title: '', credentials: '', bio: '', image: '' });
   const [doctorMsg, setDoctorMsg] = useState('');
+
+  // Reviews management
+  const [reviews, setReviews] = useState<SiteReview[]>([]);
+  const [showAddReview, setShowAddReview] = useState(false);
+  const [editingReview, setEditingReview] = useState<SiteReview | null>(null);
+  const [newReview, setNewReview] = useState({ authorName: '', rating: 5, text: '', source: '' });
+  const [reviewMsg, setReviewMsg] = useState('');
 
   // Selected appointment for modal action
   const [selectedApt, setSelectedApt] = useState<AppointmentRequest | null>(null);
@@ -134,6 +143,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     } catch {}
   };
 
+  const fetchReviews = async () => {
+    try {
+      const res = await fetch('/api/reviews');
+      const data = await res.json();
+      if (Array.isArray(data)) setReviews(data);
+    } catch {}
+  };
+
   // Session is server-side (httpOnly cookie) and NOT persisted client-side,
   // so the login page always appears when opening #admin.
   const handleAuthFailure = (res: Response): boolean => {
@@ -152,6 +169,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       fetchMessages();
       fetchAdmins();
       fetchDoctors();
+      fetchReviews();
     }
   }, [isLoggedIn]);
 
@@ -578,6 +596,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
             }`}
           >
             <Stethoscope className="w-4 h-4" /> Doctors <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'doctors' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{doctors.length}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+              activeTab === 'reviews' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Star className="w-4 h-4" /> Reviews <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'reviews' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{reviews.length}</span>
           </button>
         </div>
       </div>
@@ -1446,6 +1473,173 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                     if (data.success) { setEditingDoctor(null); fetchDoctors(); setDoctorMsg('Doctor updated successfully!'); }
                   }} className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors"><Save className="w-3.5 h-3.5 inline" /> Save</button>
                   <button onClick={() => setEditingDoctor(null)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors">Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 8: REVIEWS MANAGEMENT */}
+      {activeTab === 'reviews' && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Patient Reviews</h3>
+              <p className="text-xs text-slate-500">Reviews added here appear on the homepage automatically. Synced to Firebase, so they survive redeploys.</p>
+            </div>
+            <button onClick={() => setShowAddReview(true)} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-2 transition-colors">
+              <Plus className="w-4 h-4" /> Add Review
+            </button>
+          </div>
+
+          {reviewMsg && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl">{reviewMsg}</div>}
+
+          {reviews.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm px-5 py-3 flex items-center gap-3">
+                <span className="text-2xl font-extrabold text-slate-900">
+                  {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
+                </span>
+                <div>
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className={`w-4 h-4 ${i <= Math.round(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                    ))}
+                  </div>
+                  <div className="text-[11px] text-slate-500">Based on {reviews.length} review{reviews.length === 1 ? '' : 's'}</div>
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-400">Shown on the homepage "What Our Patients Say" section</span>
+            </div>
+          )}
+
+          {showAddReview && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
+              <h4 className="font-bold text-sm text-slate-900">New Review</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input type="text" placeholder="Patient Name *" value={newReview.authorName} onChange={(e) => setNewReview({ ...newReview, authorName: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="text" placeholder="Source (e.g. Google, Walk-in) — optional" value={newReview.source} onChange={(e) => setNewReview({ ...newReview, source: e.target.value })} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Rating</label>
+                <div className="flex items-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setNewReview({ ...newReview, rating: i })}
+                      className="p-1 rounded-lg hover:scale-110 transition-transform"
+                      aria-label={`${i} star${i === 1 ? '' : 's'}`}
+                    >
+                      <Star className={`w-7 h-7 ${i <= newReview.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-slate-700 ml-2">{newReview.rating}/5</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Review Text</label>
+                <textarea rows={3} placeholder="What did this patient say?" value={newReview.text} onChange={(e) => setNewReview({ ...newReview, text: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={async () => {
+                  setReviewMsg('');
+                  if (!newReview.authorName.trim()) return alert('Patient name is required.');
+                  if (!newReview.text.trim()) return alert('Review text is required.');
+                  const res = await fetch('/api/reviews', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newReview)
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.id) { setShowAddReview(false); setNewReview({ authorName: '', rating: 5, text: '', source: '' }); fetchReviews(); setReviewMsg('Review published — it now shows on the homepage.'); }
+                  else if (handleAuthFailure(res)) return;
+                  else alert(data.error || 'Failed to add review.');
+                }} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors">Publish Review</button>
+                <button onClick={() => setShowAddReview(false)} className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors">Cancel</button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {reviews.map(rev => (
+              <div key={rev.id} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-shadow p-6 space-y-3 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
+                <div className="flex items-start gap-4 relative">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center font-bold shadow-md">
+                    {rev.authorName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-sm text-slate-900 truncate flex items-center gap-1.5">
+                      {rev.authorName}
+                      {rev.source && <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 shrink-0">{rev.source}</span>}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Star key={i} className={`w-3.5 h-3.5 ${i <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                        ))}
+                      </div>
+                      <span className="text-[11px] text-slate-400">{new Date(rev.createdAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed line-clamp-3 relative">{rev.text}</p>
+                <div className="flex gap-2 pt-2 border-t border-slate-100 relative">
+                  <button onClick={() => setEditingReview(rev)} className="flex-1 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-[11px] font-bold transition-colors"><Edit3 className="w-3 h-3 inline" /> Edit</button>
+                  <button onClick={async () => {
+                    if (!confirm(`Delete this review by ${rev.authorName}?`)) return;
+                    const res = await fetch(`/api/reviews/${rev.id}`, { method: 'DELETE' });
+                    if (handleAuthFailure(res)) return;
+                    fetchReviews(); setReviewMsg('Review removed from the homepage.');
+                  }} className="flex-1 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-[11px] font-bold transition-colors"><Trash2 className="w-3 h-3 inline" /> Delete</button>
+                </div>
+              </div>
+            ))}
+            {reviews.length === 0 && !showAddReview && (
+              <div className="col-span-full p-10 bg-white rounded-3xl border border-slate-200/80 shadow-xl text-center text-sm text-slate-400">
+                No reviews yet. Click "Add Review" to publish your first patient testimonial.
+              </div>
+            )}
+          </div>
+
+          {editingReview && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 overflow-y-auto">
+              <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xl space-y-4 my-8">
+                <h3 className="font-bold text-base text-slate-900">Edit Review</h3>
+                <div className="space-y-3">
+                  <input type="text" value={editingReview.authorName} onChange={(e) => setEditingReview({ ...editingReview, authorName: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Patient Name" />
+                  <input type="text" value={editingReview.source || ''} onChange={(e) => setEditingReview({ ...editingReview, source: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none" placeholder="Source (optional)" />
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Rating</label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setEditingReview({ ...editingReview, rating: i })}
+                          className="p-1 rounded-lg hover:scale-110 transition-transform"
+                        >
+                          <Star className={`w-7 h-7 ${i <= editingReview.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                      <span className="text-xs font-bold text-slate-700 ml-2">{editingReview.rating}/5</span>
+                    </div>
+                  </div>
+                  <textarea rows={3} value={editingReview.text} onChange={(e) => setEditingReview({ ...editingReview, text: e.target.value })} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none resize-none" placeholder="Review text" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={async () => {
+                    const res = await fetch(`/api/reviews/${editingReview.id}`, {
+                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ authorName: editingReview.authorName, rating: editingReview.rating, text: editingReview.text, source: editingReview.source })
+                    });
+                    if (handleAuthFailure(res)) return;
+                    const data = await res.json();
+                    if (res.ok) { setEditingReview(null); fetchReviews(); setReviewMsg('Review updated — homepage is synced.'); }
+                    else alert(data.error || 'Failed to update review.');
+                  }} className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors"><Save className="w-3.5 h-3.5 inline" /> Save</button>
+                  <button onClick={() => setEditingReview(null)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors">Cancel</button>
                 </div>
               </div>
             </div>

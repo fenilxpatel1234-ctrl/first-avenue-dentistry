@@ -100,3 +100,12 @@ export interface Doctor {
   image?: string;
   createdAt: string;
 }
+
+export interface SiteReview {
+  id: string;
+  authorName: string;
+  rating: number; // 1-5
+  text: string;
+  source?: string; // e.g. 'Google', 'Patient', 'Walk-in'
+  createdAt: string;
+}

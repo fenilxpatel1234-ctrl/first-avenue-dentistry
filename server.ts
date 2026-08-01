@@ -5,8 +5,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
-import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor } from './src/types';
-import { CLINIC_SETTINGS } from './src/data/mockData';
+import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor, SiteReview } from './src/types';
 import { initFirebase, isFirebaseReady, fbGet, fbSet } from './src/lib/firebase';
 
 dotenv.config({ path: '.env.local' });
@@ -65,6 +64,7 @@ const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
 const DOCTORS_FILE = path.join(DATA_DIR, 'doctors.json');
+const REVIEWS_FILE = path.join(DATA_DIR, 'reviews.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -92,6 +92,7 @@ const DEFAULT_ADMIN: AdminUser = {
 let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, [], path.join(SEEDS_DIR, 'appointments.json'));
 let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, [], path.join(SEEDS_DIR, 'messages.json'));
 let doctorDatabase: Doctor[] = loadJSON(DOCTORS_FILE, [], path.join(SEEDS_DIR, 'doctors.json'));
+let reviewDatabase: SiteReview[] = loadJSON(REVIEWS_FILE, [], path.join(SEEDS_DIR, 'reviews.json'));
 
 if (doctorDatabase.length === 0) {
   doctorDatabase = [
@@ -127,6 +128,7 @@ function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase
 function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); fbSet('messages', messageDatabase); }
 function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); fbSet('admins', adminDatabase); }
 function persistDoctors() { saveJSON(DOCTORS_FILE, doctorDatabase); fbSet('doctors', doctorDatabase); }
+function persistReviews() { saveJSON(REVIEWS_FILE, reviewDatabase); fbSet('reviews', reviewDatabase); }
 
 // --- Admin auth: password hashing, httpOnly sessions, brute-force protection ---
 function hashPassword(password: string): string {
@@ -622,90 +624,67 @@ app.get('/api/geo', async (req: Request, res: Response) => {
   }
 });
 
-// Google Reviews (Places API) - cached 24h
-interface CachedReviews {
-  placeId: string;
-  rating: number | null;
-  totalRatings: number | null;
-  reviews: Array<{
-    authorName: string;
-    authorUrl: string;
-    photoUrl: string;
-    rating: number;
-    text: string;
-    relativeTime: string;
-  }>;
-  at: number;
-}
-let reviewsCache: CachedReviews | null = null;
-const REVIEWS_TTL_MS = 24 * 60 * 60 * 1000;
+// --- Reviews (manual, managed from Admin panel; synced to Firebase) ---
 
-app.get('/api/reviews', async (req: Request, res: Response) => {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) return res.status(503).json({ error: 'not_configured' });
+// Public: homepage fetches the review list
+app.get('/api/reviews', (_req: Request, res: Response) => {
+  const sorted = [...reviewDatabase].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  res.json(sorted);
+});
 
-  if (reviewsCache && Date.now() - reviewsCache.at < REVIEWS_TTL_MS) {
-    const { at, ...data } = reviewsCache;
-    return res.json(data);
-  }
+// Admin: add a review
+app.post('/api/reviews', requireAdmin, (req: Request, res: Response) => {
+  const { authorName, rating, text, source } = req.body || {};
+  const name = String(authorName || '').trim();
+  const body = String(text || '').trim();
+  const stars = Math.round(Number(rating));
+  if (!name || !body) return res.status(400).json({ error: 'Author name and review text are required.' });
+  if (!Number.isFinite(stars) || stars < 1 || stars > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5 stars.' });
+  if (body.length > 2000) return res.status(400).json({ error: 'Review text is too long (max 2000 characters).' });
 
-  try {
-    let placeId = process.env.GOOGLE_PLACE_ID || '';
-    if (!placeId) {
-      const query = `First Avenue Family Dentistry ${CLINIC_SETTINGS.address}`;
-      const search = await fetch(
-        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${key}`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const searchJson = await search.json() as { status?: string; results?: Array<{ place_id?: string }> };
-      if (searchJson.status !== 'OK' || !searchJson.results?.[0]?.place_id) {
-        return res.status(502).json({ error: 'place_not_found', detail: searchJson.status });
-      }
-      placeId = searchJson.results[0].place_id;
-    }
+  const review: SiteReview = {
+    id: `rev-${Date.now().toString().slice(-6)}`,
+    authorName: name,
+    rating: stars,
+    text: body,
+    source: String(source || '').trim().slice(0, 40) || undefined,
+    createdAt: new Date().toISOString()
+  };
+  reviewDatabase.unshift(review);
+  persistReviews();
+  res.status(201).json(review);
+});
 
-    const details = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=rating,user_ratings_total,reviews&language=en&key=${key}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    const json = await details.json() as {
-      status?: string;
-      result?: {
-        rating?: number;
-        user_ratings_total?: number;
-        reviews?: Array<{
-          author_name?: string;
-          author_url?: string;
-          profile_photo_url?: string;
-          rating?: number;
-          text?: string;
-          relative_time_description?: string;
-        }>;
-      };
-    };
-    if (json.status !== 'OK' || !json.result) {
-      return res.status(502).json({ error: 'details_failed', detail: json.status });
-    }
+// Admin: update a review
+app.patch('/api/reviews/:id', requireAdmin, (req: Request, res: Response) => {
+  const idx = reviewDatabase.findIndex((r) => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Review not found.' });
+  const { authorName, rating, text, source } = req.body || {};
+  const name = String(authorName ?? reviewDatabase[idx].authorName).trim();
+  const body = String(text ?? reviewDatabase[idx].text).trim();
+  const stars = rating !== undefined ? Math.round(Number(rating)) : reviewDatabase[idx].rating;
+  if (!name || !body) return res.status(400).json({ error: 'Author name and review text are required.' });
+  if (!Number.isFinite(stars) || stars < 1 || stars > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5 stars.' });
+  if (body.length > 2000) return res.status(400).json({ error: 'Review text is too long (max 2000 characters).' });
 
-    reviewsCache = {
-      placeId,
-      rating: json.result.rating ?? null,
-      totalRatings: json.result.user_ratings_total ?? null,
-      reviews: (json.result.reviews || []).map((r) => ({
-        authorName: r.author_name || 'Google User',
-        authorUrl: r.author_url || '',
-        photoUrl: r.profile_photo_url || '',
-        rating: r.rating || 5,
-        text: (r.text || '').trim(),
-        relativeTime: r.relative_time_description || ''
-      })),
-      at: Date.now()
-    };
-    const { at, ...data } = reviewsCache;
-    return res.json(data);
-  } catch (err: any) {
-    return res.status(502).json({ error: 'fetch_failed', detail: err?.message || '' });
-  }
+  reviewDatabase[idx] = {
+    ...reviewDatabase[idx],
+    authorName: name,
+    rating: stars,
+    text: body,
+    source: String(source ?? '').trim().slice(0, 40) || undefined
+  };
+  persistReviews();
+  res.json(reviewDatabase[idx]);
+});
+
+// Admin: delete a review
+app.delete('/api/reviews/:id', requireAdmin, (req: Request, res: Response) => {
+  const idx = reviewDatabase.findIndex((r) => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Review not found.' });
+  reviewDatabase.splice(idx, 1);
+  persistReviews();
+  res.json({ ok: true });
 });
 
 // Submit Appointment Request
@@ -1270,7 +1249,16 @@ async function hydrateFromFirebase(): Promise<void> {
     await fbSet('admins', adminDatabase);
   }
 
-  console.log(`[storage] Firebase source of truth: ${doctorDatabase.length} doctors, ${appointmentDatabase.length} appointments, ${messageDatabase.length} messages, ${adminDatabase.length} admins`);
+  // Reviews
+  const fbReviews = await fbGet<SiteReview[]>('reviews');
+  if (Array.isArray(fbReviews)) {
+    reviewDatabase = fbReviews;
+    saveJSON(REVIEWS_FILE, reviewDatabase);
+  } else {
+    await fbSet('reviews', reviewDatabase);
+  }
+
+  console.log(`[storage] Firebase source of truth: ${doctorDatabase.length} doctors, ${appointmentDatabase.length} appointments, ${messageDatabase.length} messages, ${adminDatabase.length} admins, ${reviewDatabase.length} reviews`);
 }
 
 async function startServer() {

@@ -2,7 +2,7 @@ import React from 'react';
 import { PageView } from '../types';
 import { HOME_FEATURES, SERVICE_CATEGORIES_HOME, PILLARS_OF_CARE, CLINIC_SETTINGS } from '../data/mockData';
 import { ToothCanvas } from '../components/3d/ToothCanvas';
-import { GoogleReviews } from '../components/GoogleReviews';
+import { ReviewsSection } from '../components/ReviewsSection';
 import { Sparkles, Calendar, Phone, Clock, MapPin, ChevronRight, Bot } from 'lucide-react';
 
 interface HomeViewProps {
@@ -205,8 +205,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
         </div>
       </section>
 
-      {/* GOOGLE REVIEWS */}
-      <GoogleReviews />
+      {/* PATIENT REVIEWS */}
+      <ReviewsSection />
 
       {/* LOCATION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
