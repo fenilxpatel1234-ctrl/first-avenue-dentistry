@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, ChevronDown } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { Doctor } from '../types';
 
 const COUNTRIES = [
   { code: 'AF', name: 'Afghanistan', dial: '+93' },
@@ -172,9 +173,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, pre
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorPreference, setDoctorPreference] = useState('Any Available');
 
   useEffect(() => {
     setCountryCode(getCountryByTimezone());
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/doctors')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setDoctors(data); })
+      .catch(() => {});
   }, []);
 
   if (!isOpen) return null;
@@ -198,7 +208,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, pre
           phone: `${selectedCountry.dial} ${formData.phone}`,
           serviceName: 'General Appointment',
           serviceId: 'general-checkup',
-          doctorPreference: 'Any Available',
+          doctorPreference,
           insuranceProvider: 'Not Specified',
           isNewPatient: true,
           consent: true,
@@ -301,6 +311,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, pre
                     <option value="04:00 PM">4:00 PM</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Preferred Doctor</label>
+                <select value={doctorPreference} onChange={(e) => setDoctorPreference(e.target.value)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="Any Available">Any Available Doctor</option>
+                  {doctors.map(doc => (
+                    <option key={doc.id} value={`${doc.name}${doc.credentials ? `, ${doc.credentials}` : ''}`}>
+                      {doc.name}{doc.credentials ? `, ${doc.credentials}` : ''} — {doc.title}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

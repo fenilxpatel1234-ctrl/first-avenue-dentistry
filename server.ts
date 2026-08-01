@@ -2,9 +2,8 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
 import { createServer as createViteServer } from 'vite';
-import { AppointmentRequest, PatientMessage, AdminUser, ResetToken } from './src/types';
+import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor } from './src/types';
 
 const app = express();
 const PORT = 3000;
@@ -41,6 +40,7 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
+const DOCTORS_FILE = path.join(DATA_DIR, 'doctors.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -61,6 +61,14 @@ const DEFAULT_ADMIN: AdminUser = {
 
 let appointmentDatabase: AppointmentRequest[] = loadJSON(APPOINTMENTS_FILE, []);
 let messageDatabase: PatientMessage[] = loadJSON(MESSAGES_FILE, []);
+let doctorDatabase: Doctor[] = loadJSON(DOCTORS_FILE, []);
+
+if (doctorDatabase.length === 0) {
+  doctorDatabase = [
+    { id: 'dr-1', name: 'Dr. Sarah Jenkins', title: 'Lead Dentist', credentials: 'DDS', bio: 'Founder of First Avenue Dentistry with over 15 years of experience in family and cosmetic dentistry.', createdAt: new Date().toISOString() }
+  ];
+  saveJSON(DOCTORS_FILE, doctorDatabase);
+}
 
 // Load admins from file; if missing, seed from defaults + env
 let adminDatabase: AdminUser[] = loadJSON(ADMINS_FILE, []);
@@ -88,29 +96,19 @@ if (adminDatabase.length === 0) {
 function persistAppointments() { saveJSON(APPOINTMENTS_FILE, appointmentDatabase); }
 function persistMessages() { saveJSON(MESSAGES_FILE, messageDatabase); }
 function persistAdmins() { saveJSON(ADMINS_FILE, adminDatabase); }
+function persistDoctors() { saveJSON(DOCTORS_FILE, doctorDatabase); }
 
 // Simple auth helper (accepts email or username)
 function authenticateAdmin(login: string, password: string): AdminUser | null {
   return adminDatabase.find(a => (a.email === login || a.username === login) && a.password === password) || null;
 }
 
-// Email delivery: SendGrid > Gmail SMTP > File log
+// Email delivery: built into the server code (SMTP via nodemailer) with file-log fallback.
+// No third-party email services are used - emails are composed and sent by our own code.
 const EMAIL_USER = 'fenilxpatel2642@gmail.com';
 const EMAIL_PASS = 'skww dpsl hobz stiz';
 const EMAIL_LOG_FILE = path.join(DATA_DIR, 'email_log.json');
-const SENDGRID_KEY = process.env.SENDGRID_API_KEY || '';
 
-let sendGridReady = false;
-
-if (SENDGRID_KEY) {
-  sgMail.setApiKey(SENDGRID_KEY);
-  sendGridReady = true;
-  console.log('SendGrid API key configured');
-} else {
-  console.log('No SENDGRID_API_KEY set - will try Gmail SMTP, then fall back to file log');
-}
-
-// Gmail SMTP fallback
 let smtpTransporter: nodemailer.Transporter | null = null;
 let smtpReady = false;
 
@@ -122,7 +120,7 @@ let smtpReady = false;
     });
     await smtpTransporter.verify();
     smtpReady = true;
-    console.log('Gmail SMTP ready (465)');
+    console.log('SMTP ready (465)');
   } catch {
     try {
       smtpTransporter = nodemailer.createTransport({
@@ -131,52 +129,226 @@ let smtpReady = false;
       });
       await smtpTransporter.verify();
       smtpReady = true;
-      console.log('Gmail SMTP ready (587)');
+      console.log('SMTP ready (587)');
     } catch {
-      console.log('Gmail SMTP unavailable - will use SendGrid or file log');
+      console.log('SMTP unavailable - will use file log');
     }
   }
 })();
 
-function logEmailToFile(to: string, subject: string, body: string): void {
+function logEmailToFile(to: string, subject: string, html: string): void {
   try {
     const logs = loadJSON(EMAIL_LOG_FILE, []);
-    logs.push({ to, subject, body, timestamp: new Date().toISOString() });
+    logs.push({ to, subject, body: html, timestamp: new Date().toISOString() });
     saveJSON(EMAIL_LOG_FILE, logs);
   } catch {}
 }
 
-async function deliverEmail(to: string, subject: string, body: string): Promise<void> {
-  console.log(`Delivering email to ${to}: [${subject}]`);
-  logEmailToFile(to, subject, body);
+// --- Designed HTML email template (branded, interactive, no third-party tools) ---
+const CLINIC_NAME = 'First Avenue Dentistry';
+const CLINIC_PHONE = '(519) 207-6890';
+const CLINIC_ADDRESS = '308 Wellington Street, St. Thomas, ON N5R 2S9';
 
-  // Try SendGrid first (works over HTTPS, port 443)
-  if (sendGridReady) {
-    try {
-      await sgMail.send({
-        to,
-        from: { email: EMAIL_USER, name: 'First Avenue Dentistry' },
-        subject,
-        text: body
-      });
-      console.log('Email sent via SendGrid');
-      return;
-    } catch (err: any) {
-      console.error('SendGrid failed:', err.message);
-    }
+function emailShell(innerHtml: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${CLINIC_NAME}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#2563eb 0%,#06b6d4 100%);padding:32px 40px;text-align:center;">
+              <div style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:1px;">FIRST AVENUE<br>DENTISTRY</div>
+              <div style="font-size:12px;color:#e0f2fe;margin-top:6px;letter-spacing:2px;">ST. THOMAS &bull; ONTARIO</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 40px;color:#1e293b;">
+              ${innerHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:24px 40px;border-top:1px solid #e2e8f0;text-align:center;">
+              <div style="font-size:12px;color:#475569;line-height:1.8;">
+                <strong>${CLINIC_NAME}</strong><br>
+                ${CLINIC_ADDRESS}<br>
+                <a href="tel:+15192076890" style="color:#2563eb;text-decoration:none;font-weight:bold;">${CLINIC_PHONE}</a> &nbsp;|&nbsp;
+                <a href="mailto:firstavenuedentistry@gmail.com" style="color:#2563eb;text-decoration:none;">firstavenuedentistry@gmail.com</a><br>
+                Mon &ndash; Fri: 9am &ndash; 6pm &nbsp;|&nbsp; Sat: 9am &ndash; 5pm
+              </div>
+              <div style="font-size:10px;color:#94a3b8;margin-top:12px;">&copy; ${new Date().getFullYear()} ${CLINIC_NAME}. All rights reserved.</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function detailRow(label: string, value: string): string {
+  return `<tr>
+    <td style="padding:10px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:bold;color:#64748b;width:40%;border-radius:8px 0 0 8px;">${label}</td>
+    <td style="padding:10px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;color:#0f172a;font-weight:600;">${value}</td>
+  </tr>`;
+}
+
+function summaryTable(rows: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;margin:20px 0;">${rows}</table>`;
+}
+
+function ctaButton(text: string, href: string, bg = '#2563eb'): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto;">
+    <tr>
+      <td align="center" style="background:${bg};border-radius:9999px;padding:13px 36px;">
+        <a href="${href}" style="display:inline-block;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;letter-spacing:0.5px;">${text}</a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function heading(text: string, sub?: string): string {
+  return `<h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#0f172a;">${text}</h1>
+  ${sub ? `<p style="margin:0 0 24px;font-size:14px;color:#64748b;">${sub}</p>` : ''}`;
+}
+
+// --- Email builders ---
+function appointmentReceivedEmail(apt: AppointmentRequest): { subject: string; html: string } {
+  const subject = `We Received Your Appointment Request - ${CLINIC_NAME}`;
+  const html = emailShell(`
+    ${heading('Thank you, ' + apt.firstName + '!', 'Your appointment request has been received and is being reviewed by our team.')}
+    <p style="font-size:14px;color:#475569;line-height:1.7;margin:0 0 4px;">Here is a summary of your request:</p>
+    ${summaryTable(
+      detailRow('Patient', apt.firstName + ' ' + apt.lastName) +
+      detailRow('Service', apt.serviceName) +
+      detailRow('Preferred Date', apt.preferredDate) +
+      detailRow('Preferred Time', apt.preferredTimeSlot) +
+      detailRow('Phone', apt.phone) +
+      detailRow('Email', apt.email)
+    )}
+    <p style="font-size:13px;color:#64748b;line-height:1.7;">You will receive a confirmation email once your appointment is confirmed. If you have any questions, feel free to call us anytime.</p>
+    ${ctaButton('Call Us Now', 'tel:+15192076890')}
+  `);
+  return { subject, html };
+}
+
+function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { subject: string; html: string } | null {
+  const patientName = `${apt.firstName} ${apt.lastName}`;
+  const date = apt.confirmedDate || apt.preferredDate;
+  const time = apt.confirmedTime || apt.preferredTimeSlot;
+  const doctor = apt.assignedDoctor || apt.doctorPreference;
+
+  if (newStatus === 'Approved') {
+    return {
+      subject: `Your Appointment is Confirmed! - ${CLINIC_NAME}`,
+      html: emailShell(`
+        ${heading('Appointment Confirmed!', 'Dear ' + patientName + ', your appointment has been confirmed.')}
+        <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:#047857;">&#10003; Confirmed</div>
+        </div>
+        ${summaryTable(
+          detailRow('Date', date) +
+          detailRow('Time', time) +
+          detailRow('Doctor', doctor) +
+          detailRow('Service', apt.serviceName) +
+          detailRow('Location', CLINIC_ADDRESS)
+        )}
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">Please arrive 10 minutes early. If you need to reschedule, kindly contact us at least 24 hours in advance.</p>
+        ${ctaButton('Add to Calendar', 'https://firstavenuedentistry.com/#book-online', '#059669')}
+        ${ctaButton('Call Our Office', 'tel:+15192076890')}
+      `)
+    };
   }
+  if (newStatus === 'Rescheduled') {
+    return {
+      subject: `Your Appointment Has Been Rescheduled - ${CLINIC_NAME}`,
+      html: emailShell(`
+        ${heading('Appointment Rescheduled', 'Dear ' + patientName + ', here are your updated appointment details.')}
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:#b45309;">&#128259; Rescheduled</div>
+        </div>
+        ${summaryTable(
+          detailRow('New Date', date) +
+          detailRow('New Time', time) +
+          detailRow('Doctor', doctor) +
+          detailRow('Service', apt.serviceName) +
+          (apt.adminNotes ? detailRow('Notes', apt.adminNotes) : '')
+        )}
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">If this new time doesn't work for you, please call us and we will be happy to help.</p>
+        ${ctaButton('Call Our Office', 'tel:+15192076890')}
+      `)
+    };
+  }
+  if (newStatus === 'Rejected') {
+    return {
+      subject: `Update on Your Appointment Request - ${CLINIC_NAME}`,
+      html: emailShell(`
+        ${heading('Appointment Request Update', 'Dear ' + patientName + ', we are unable to accommodate your request at this time.')}
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:#b91c1c;">&#10060; Not Available</div>
+        </div>
+        ${apt.adminNotes ? summaryTable(detailRow('Notes from our team', apt.adminNotes)) : ''}
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">Please feel free to book another appointment through our website, or call us and we will find a time that works for you.</p>
+        ${ctaButton('Book Another Appointment', 'https://firstavenuedentistry.com/#book-online', '#b91c1c')}
+        ${ctaButton('Call Our Office', 'tel:+15192076890')}
+      `)
+    };
+  }
+  return null;
+}
 
-  // Fallback to Gmail SMTP
+function contactMessageEmail(msg: PatientMessage): { subject: string; html: string } {
+  const subject = `New Contact Message from ${msg.name} - ${CLINIC_NAME}`;
+  const html = emailShell(`
+    ${heading('New Contact Form Message', 'Someone just sent a message through the website contact form.')}
+    ${summaryTable(
+      detailRow('Name', msg.name) +
+      detailRow('Email', msg.email) +
+      detailRow('Phone', msg.phone || 'Not provided') +
+      detailRow('Subject', msg.subject)
+    )}
+    <p style="font-size:14px;color:#0f172a;font-weight:600;margin:16px 0 4px;">Message:</p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;font-size:13px;color:#334155;line-height:1.7;">${msg.message.replace(/\n/g, '<br>')}</div>
+    ${ctaButton('Reply by Email', 'mailto:' + msg.email)}
+  `);
+  return { subject, html };
+}
+
+function resetCodeEmail(code: string): { subject: string; html: string } {
+  const subject = `Your Password Reset Code - ${CLINIC_NAME} Admin`;
+  const html = emailShell(`
+    ${heading('Password Reset Code', 'You requested a password reset for your admin account.')}
+    <p style="font-size:14px;color:#475569;line-height:1.7;">Use the code below to reset your password. It expires in <strong>15 minutes</strong>.</p>
+    <div style="background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:24px;text-align:center;margin:20px 0;">
+      <div style="font-size:36px;font-weight:800;color:#2563eb;letter-spacing:12px;">${code}</div>
+    </div>
+    ${ctaButton('Reset Your Password', 'https://firstavenuedentistry.com/#reset-password')}
+    <p style="font-size:12px;color:#94a3b8;line-height:1.6;">If you did not request this, you can safely ignore this email.</p>
+  `);
+  return { subject, html };
+}
+
+async function deliverEmail(to: string, subject: string, html: string): Promise<void> {
+  console.log(`Delivering email to ${to}: [${subject}]`);
+  logEmailToFile(to, subject, html);
+
   if (smtpReady && smtpTransporter) {
     try {
       const info = await smtpTransporter.sendMail({
-        from: `"First Avenue Dentistry" <${EMAIL_USER}>`,
-        to, subject, text: body
+        from: `"${CLINIC_NAME}" <${EMAIL_USER}>`,
+        to, subject, html, text: 'Please view this email in an HTML-enabled client.'
       });
-      console.log('Email sent via Gmail SMTP:', info.messageId);
+      console.log('Email sent via SMTP:', info.messageId);
       return;
     } catch (err: any) {
-      console.error('Gmail SMTP failed:', err.message);
+      console.error('SMTP failed:', err.message);
     }
   }
 
@@ -184,34 +356,14 @@ async function deliverEmail(to: string, subject: string, body: string): Promise<
 }
 
 function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
-  const patientName = `${apt.firstName} ${apt.lastName}`;
-  const clinicName = 'First Avenue Dentistry';
-  const clinicPhone = '(519) 207-6890';
-  const clinicAddress = '308 Wellington Street, St.Thomas, ON N5R 2S9';
-
-  let subject = '';
-  let body = '';
-
-  if (newStatus === 'Approved') {
-    subject = `Your Appointment at ${clinicName} is Confirmed!`;
-    body = `Dear ${patientName},\n\nYour appointment at ${clinicName} has been CONFIRMED!\n\nDate: ${apt.confirmedDate || apt.preferredDate}\nTime: ${apt.confirmedTime || apt.preferredTimeSlot}\nDoctor: ${apt.assignedDoctor || apt.doctorPreference}\nService: ${apt.serviceName}\n\nLocation: ${clinicAddress}\nPhone: ${clinicPhone}\n\nPlease arrive 10 minutes early. If you need to reschedule, please contact us at least 24 hours in advance.\n\nWe look forward to seeing you!\n\nBest regards,\n${clinicName} Team`;
-  } else if (newStatus === 'Rejected') {
-    subject = `Update on Your ${clinicName} Appointment Request`;
-    body = `Dear ${patientName},\n\nUnfortunately, we are unable to accommodate your appointment request for ${apt.serviceName} on ${apt.preferredDate} at ${apt.preferredTimeSlot}.\n\n${apt.adminNotes ? `Notes from our team: ${apt.adminNotes}\n\n` : ''}Please feel free to book another appointment through our website or call us at ${clinicPhone}.\n\nBest regards,\n${clinicName} Team`;
-  } else if (newStatus === 'Rescheduled') {
-    subject = `Your ${clinicName} Appointment Has Been Rescheduled`;
-    body = `Dear ${patientName},\n\nYour appointment has been RESCHEDULED.\n\nNew Date: ${apt.confirmedDate || apt.preferredDate}\nNew Time: ${apt.confirmedTime || apt.preferredTimeSlot}\nDoctor: ${apt.assignedDoctor || apt.doctorPreference}\nService: ${apt.serviceName}\n\n${apt.adminNotes ? `Notes: ${apt.adminNotes}\n\n` : ''}If this new time doesn't work for you, please call us at ${clinicPhone}.\n\nBest regards,\n${clinicName} Team`;
-  } else {
-    return;
-  }
-
-  deliverEmail(apt.email, subject, body);
+  const email = appointmentStatusEmail(apt, newStatus);
+  if (!email) return;
+  deliverEmail(apt.email, email.subject, email.html);
 }
 
 function sendNewAppointmentNotification(apt: AppointmentRequest): void {
-  const body = `Dear ${apt.firstName},\n\nThank you for requesting an appointment at First Avenue Dentistry!\n\nWe have received your request and our team will review it shortly.\n\nRequest Summary:\n• Name: ${apt.firstName} ${apt.lastName}\n• Email: ${apt.email}\n• Phone: ${apt.phone}\n• Preferred Date: ${apt.preferredDate}\n• Preferred Time: ${apt.preferredTimeSlot}\n• Service: ${apt.serviceName}\n${apt.notes ? `• Notes: ${apt.notes}` : ''}\n\nYou will receive another email once your appointment is confirmed.\n\nIf you have any questions, please call us at (519) 207-6890.\n\nBest regards,\nFirst Avenue Dentistry Team`;
-
-  deliverEmail(apt.email, `We Received Your First Avenue Dentistry Appointment Request`, body);
+  const email = appointmentReceivedEmail(apt);
+  deliverEmail(apt.email, email.subject, email.html);
 }
 
 // --- SEO ---
@@ -422,11 +574,63 @@ app.post('/api/contact', (req: Request, res: Response) => {
 
   messageDatabase.unshift(newMsg);
   persistMessages();
+
+  const notif = contactMessageEmail(newMsg);
+  deliverEmail('firstavenuedentistry@gmail.com', notif.subject, notif.html);
+  deliverEmail(newMsg.email, 'We Received Your Message - First Avenue Dentistry', emailShell(`
+    ${heading('Thank you, ' + newMsg.name.split(' ')[0] + '!', 'We received your message and our team will get back to you shortly.')}
+    <p style="font-size:13px;color:#64748b;line-height:1.7;">For anything urgent, please call us directly at <a href="tel:+15192076890" style="color:#2563eb;font-weight:bold;">(519) 207-6890</a>.</p>
+    ${ctaButton('Visit Our Website', 'https://firstavenuedentistry.com')}
+  `));
+
   return res.json({ success: true, message: 'Your message has been sent to our concierge team.' });
 });
 
 app.get('/api/contact', (req: Request, res: Response) => {
   res.json(messageDatabase);
+});
+
+// --- Doctors CRUD ---
+app.get('/api/doctors', (req: Request, res: Response) => {
+  res.json(doctorDatabase);
+});
+
+app.post('/api/doctors', (req: Request, res: Response) => {
+  const { name, title, credentials, bio, image } = req.body;
+  if (!name) return res.status(400).json({ error: 'Doctor name is required.' });
+  const newDoctor: Doctor = {
+    id: `dr-${Date.now().toString(36)}`,
+    name,
+    title: title || 'Dentist',
+    credentials: credentials || '',
+    bio: bio || '',
+    image: image || '',
+    createdAt: new Date().toISOString()
+  };
+  doctorDatabase.push(newDoctor);
+  persistDoctors();
+  res.json({ success: true, doctor: newDoctor });
+});
+
+app.patch('/api/doctors/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const idx = doctorDatabase.findIndex(d => d.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Doctor not found.' });
+  const { name, title, credentials, bio, image } = req.body;
+  if (name) doctorDatabase[idx].name = name;
+  if (title !== undefined) doctorDatabase[idx].title = title;
+  if (credentials !== undefined) doctorDatabase[idx].credentials = credentials;
+  if (bio !== undefined) doctorDatabase[idx].bio = bio;
+  if (image !== undefined) doctorDatabase[idx].image = image;
+  persistDoctors();
+  res.json({ success: true, doctor: doctorDatabase[idx] });
+});
+
+app.delete('/api/doctors/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  doctorDatabase = doctorDatabase.filter(d => d.id !== id);
+  persistDoctors();
+  res.json({ success: true, message: 'Doctor removed.' });
 });
 
 // Admin Auth Endpoint (accepts email or username)
@@ -440,7 +644,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
     return res.json({
       success: true,
       token: `jwt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-      user: { email: admin.email, username: admin.username, role: admin.role, name: admin.name, gender: admin.gender }
+      user: { id: admin.id, email: admin.email, username: admin.username, role: admin.role, name: admin.name, gender: admin.gender }
     });
   }
   return res.status(401).json({ error: 'Invalid credentials.' });
@@ -498,8 +702,8 @@ app.delete('/api/admin/accounts/:id', (req: Request, res: Response) => {
 
 // Admin: Update own profile
 app.patch('/api/admin/profile', (req: Request, res: Response) => {
-  const { name, email, username, gender, currentPassword, newPassword } = req.body;
-  const admin = adminDatabase[0];
+  const { id, name, email, username, gender, currentPassword, newPassword } = req.body;
+  const admin = adminDatabase.find(a => a.id === id);
   if (!admin) return res.status(404).json({ error: 'No admin found.' });
   if (currentPassword && admin.password !== currentPassword) return res.status(401).json({ error: 'Current password is incorrect.' });
   if (name) admin.name = name;
@@ -508,7 +712,8 @@ app.patch('/api/admin/profile', (req: Request, res: Response) => {
   if (gender !== undefined) admin.gender = gender;
   if (newPassword) admin.password = newPassword;
   persistAdmins();
-  res.json({ success: true });
+  const { password: _, ...safe } = admin;
+  res.json({ success: true, user: safe });
 });
 
 // Forgot password - generate 6-digit code and email
@@ -544,11 +749,8 @@ app.post('/api/admin/forgot-password', async (req: Request, res: Response) => {
     resetTokens.push({ email, code, expiresAt });
     persistResetTokens();
 
-    const resetLink = 'https://firstavenuedentistry.com/#reset-password';
-    const subject = 'Your Password Reset Code - First Avenue Dentistry Admin';
-    const body = `You requested a password reset for your First Avenue Dentistry admin account.\n\nYour 6-digit reset code is: ${code}\n\nThis code expires in 15 minutes.\n\nGo to ${resetLink} and enter this code along with your new password.\n\nIf you did not request this, please ignore this email.\n\n- First Avenue Dentistry Team`;
-
-    await deliverEmail(email, subject, body);
+    const mail = resetCodeEmail(code);
+    await deliverEmail(email, mail.subject, mail.html);
 
     return res.json({ success: true, message: 'A 6-digit reset code has been sent to your email.' });
   } catch (err: any) {
@@ -594,9 +796,7 @@ app.get('/api/admin/email-log', (req: Request, res: Response) => {
 // Email status endpoint
 app.get('/api/admin/email-status', (req: Request, res: Response) => {
   res.json({
-    sendGridReady,
     smtpReady,
-    hasSendGridKey: !!SENDGRID_KEY,
     logFile: fs.existsSync(EMAIL_LOG_FILE) ? fs.statSync(EMAIL_LOG_FILE).size : 0
   });
 });
@@ -605,8 +805,13 @@ app.get('/api/admin/email-status', (req: Request, res: Response) => {
 app.post('/api/admin/test-email', (req: Request, res: Response) => {
   const { to } = req.body;
   const target = to || 'fenilxpatel2642@gmail.com';
-  deliverEmail(target, 'Test Email from First Avenue Dentistry', 'This is a test email to verify the email system is working.\n\nIf you received this, emails are being delivered successfully!\n\n- First Avenue Dentistry Server');
-  res.json({ success: true, message: `Email queued for ${target}.`, sendGridReady, smtpReady });
+  const email = emailShell(`
+    ${heading('Test Email', 'This is a test to verify the email system is working.')}
+    <p style="font-size:14px;color:#475569;line-height:1.7;">If you received this email, the First Avenue Dentistry email system is delivering messages correctly.</p>
+    ${ctaButton('Visit Our Website', 'https://firstavenuedentistry.com')}
+  `);
+  deliverEmail(target, 'Test Email from First Avenue Dentistry', email);
+  res.json({ success: true, message: `Email queued for ${target}.`, smtpReady });
 });
 
 // Local FAQ responses (works without API key)

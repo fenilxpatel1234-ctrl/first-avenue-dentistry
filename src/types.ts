@@ -90,3 +90,13 @@ export interface PatientMessage {
   date: string;
   read: boolean;
 }
+
+export interface Doctor {
+  id: string;
+  name: string;
+  title: string;
+  credentials: string;
+  bio: string;
+  image?: string;
+  createdAt: string;
+}
