@@ -185,10 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 return (
                   <div key="services" className="space-y-1">
                     <button
-                      onClick={() => {
-                        onSelectView('services');
-                        setMobileMenuOpen(false);
-                      }}
+                      onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
                       className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold text-blue-600 flex items-center justify-between"
                     >
                       Services
@@ -196,6 +193,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                     {mobileServicesOpen && (
                       <div className="pl-4 space-y-0.5">
+                        <button
+                          onClick={() => {
+                            onSelectView('services');
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 rounded-lg text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 font-semibold transition-colors"
+                        >
+                          All Services
+                        </button>
                         {SERVICES_LIST.map(svc => (
                           <button
                             key={svc.id}
