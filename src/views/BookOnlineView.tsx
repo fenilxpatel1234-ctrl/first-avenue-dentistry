@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PageView } from '../types';
-import { Sparkles, Calendar, CheckCircle2, Phone, Clock, Mail, MapPin } from 'lucide-react';
+import { Sparkles, Calendar, CheckCircle2, Phone } from 'lucide-react';
 import { CLINIC_SETTINGS } from '../data/mockData';
 
 interface BookOnlineViewProps {
@@ -138,19 +138,6 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
               </button>
             </form>
           )}
-        </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xl text-center space-y-4">
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">CONTACT</h2>
-          <h3 className="font-bold text-blue-700 text-lg">{CLINIC_SETTINGS.clinicName}</h3>
-          <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-600" /> {CLINIC_SETTINGS.address}</span>
-            <a href={`tel:${CLINIC_SETTINGS.phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Phone className="w-4 h-4 text-blue-600" /> Tel: {CLINIC_SETTINGS.phone}</a>
-            <a href={`mailto:${CLINIC_SETTINGS.email}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Mail className="w-4 h-4 text-blue-600" /> Email: {CLINIC_SETTINGS.email}</a>
-            <span className="inline-flex items-center gap-2"><Clock className="w-4 h-4 text-blue-600" /> HOURS: Mon. to Fri: 9am to 6pm | Saturdays: 9am to 5pm</span>
-          </div>
         </div>
       </div>
 
