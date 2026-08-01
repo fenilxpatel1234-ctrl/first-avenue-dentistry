@@ -61,15 +61,15 @@ export const SERVICE_CATEGORIES_HOME = [
 ];
 
 export const ABOUT_VALUES = [
-  { title: "Expert Team", description: "Our skilled dentists and staff bring years of experience and a passion for patient care to every visit.", image: "https://static.wixstatic.com/media/2a5871_648ce195d771443cb085750d5b723df6~mv2.png" },
-  { title: "Advanced Technology", description: "We use the latest dental technology for precise diagnostics and comfortable treatments.", image: "https://static.wixstatic.com/media/2a5871_82e8a36d59654ff19b7d915a6b9037a4~mv2.png" },
-  { title: "Compassionate Care", description: "Your comfort matters. We take time to listen, explain, and ensure a positive dental experience.", image: "https://static.wixstatic.com/media/2a5871_cdc1694d568c49dc94e0ebcc9f934022~mv2.png" }
+  { title: "Compassionate Care", description: "Every aspect of your dental health is addressed with compassion.", image: "https://static.wixstatic.com/media/2a5871_c8a27c7c647a441eb322bac5ade383c4~mv2.png" },
+  { title: "Trusted Expertise", description: "Unparalleled expertise and incomparable experience you can rely on.", image: "https://static.wixstatic.com/media/2a5871_1f560e8fe1fc49a6a4b931e9fae0337d~mv2.png" },
+  { title: "Modern Environment", description: "State-of-the-art equipment in a welcoming, comfortable clinic.", image: "https://static.wixstatic.com/media/2a5871_e16ca33f831b46159384987c5812d700~mv2.png" }
 ];
 
 export const PILLARS_OF_CARE = [
-  { number: "01", title: "Emergency", description: "Prompt care when you need it most. We prioritize emergency cases to relieve pain and address urgent dental issues quickly." },
-  { number: "02", title: "Family", description: "Comprehensive care for every member of your family, from young children to grandparents, all in one welcoming location." },
-  { number: "03", title: "Cosmetic", description: "Enhance your smile with our range of cosmetic dentistry options, designed to boost your confidence and improve your appearance." }
+  { number: "01", title: "Emergency Dental Care", description: "We offer quick and immediate care services for all kinds of dental emergencies. Our emergency dental clinic is equipped with state-of-the-art equipment and leading-edge technology to handle a variety of urgent dental concerns." },
+  { number: "02", title: "Family Dental Care", description: "At First Avenue Dentistry, we believe in nurturing healthy smiles for the whole family. Our family dental care services are designed to meet the needs of patients of all ages." },
+  { number: "03", title: "Cosmetic Dentistry", description: "Our cosmetic dentistry services will help enhance the appearance of your teeth and boost your self-confidence. From teeth whitening and porcelain veneers to dental implants, we can do it all." }
 ];
 
 export interface BlogPost {

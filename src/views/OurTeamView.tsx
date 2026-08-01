@@ -1,7 +1,7 @@
 import React from 'react';
 import { PageView } from '../types';
 import { ABOUT_VALUES, PILLARS_OF_CARE, CLINIC_SETTINGS } from '../data/mockData';
-import { Sparkles, Calendar, ShieldCheck, HeartHandshake, Award } from 'lucide-react';
+import { Sparkles, Calendar, Phone, MapPin, Mail, Clock } from 'lucide-react';
 
 interface OurTeamViewProps {
   onSelectView: (view: PageView) => void;
@@ -14,25 +14,61 @@ export const OurTeamView: React.FC<OurTeamViewProps> = ({ onSelectView, onOpenBo
       
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-blue-600 text-xs font-semibold">
-          <Sparkles className="w-4 h-4" /> Welcome to First Avenue Dentistry
+          <Sparkles className="w-4 h-4" /> About Our First Avenue Dentistry
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-          Your Trusted Dental Team in St. Thomas
+          Welcome to First Avenue Family Dentistry
         </h1>
         <p className="text-slate-600 text-base leading-relaxed">
-          We are a dedicated team of dental professionals committed to providing compassionate, high-quality care 
-          for every member of your family in a warm and welcoming environment.
+          Your health and comfort is our top priority. We offer quality dental services and guidance which will set you on the path for a lifetime of exceptional dental and oral health. The foundation of a beautiful smile is a healthy smile.
         </p>
       </div>
 
-      <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80">
-        <img src="https://static.wixstatic.com/media/2a5871_9aae709b6d1d4239804b63ca3a3aa2cd~mv2.png" alt="First Avenue Dentistry Team" className="w-full h-[400px] object-cover" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80">
+          <img src="https://static.wixstatic.com/media/2a5871_1342019f2be947ecbb2fb19fe827b1ec~mv2.png" alt="First Avenue Dentistry Team" className="w-full h-[400px] object-cover" />
+        </div>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            First Avenue Family Dental team provides family dental care, cosmetic dentistry, dental implants, dentures, sedation, teeth whitening, orthodontics, and so much more. Therefore, with a full range of services, our patients can enjoy quality attention in just one convenient location. Our team is excited to make your first appointment at our First Avenue Family Dental a wonderful experience for both you and your family.
+          </p>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            With a helpful and friendly team, First Avenue Family Dental offers the great community of St. Thomas, Ontario dental care that is attentive and also pleasant. Are you looking for a St. Thomas dentist? Call 519 207 6890 or visit our dental clinic for personalized dental care for patients of all ages. We look forward to treating you and your family and seeing your smiles in our First Avenue Family Dental soon!
+          </p>
+          <div className="flex flex-wrap gap-4 pt-2">
+            <button onClick={onOpenBooking} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg transition-colors">
+              <Calendar className="w-4 h-4" /> Book Your Visit
+            </button>
+            <a href={`tel:${CLINIC_SETTINGS.phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-blue-600 text-blue-700 hover:bg-blue-50 font-bold text-sm transition-colors">
+              <Phone className="w-4 h-4" /> {CLINIC_SETTINGS.phone}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+        <div className="space-y-4">
+          <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">The Leading Family Dental Care Clinic</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Comprehensive care in St. Thomas, ON</h2>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Are you on the lookout for comprehensive dental care in St. Thomas, ON? Head over to First Avenue Dentistry today where your dental health and comfort are our top priorities.
+          </p>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            As one of the leading dental care clinics in St. Thomas, ON, we take pride in our unparalleled expertise and incomparable experience. We understand the importance of a healthy smile and the peace of mind that comes with knowing you have access to emergency dental services when you need them the most.
+          </p>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Our team of dental care experts is committed to excellence and goes beyond just emergency care; we offer a wide range of services encompassing family dentistry and cosmetic dentistry to ensure every aspect of your dental health is addressed with compassion.
+          </p>
+        </div>
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80">
+          <img src="https://static.wixstatic.com/media/2a5871_9aae709b6d1d4239804b63ca3a3aa2cd~mv2.png" alt="Dentist with patient" className="w-full h-[400px] object-cover" />
+        </div>
       </div>
 
       <div className="space-y-8">
         <div className="text-center max-w-2xl mx-auto space-y-3">
-          <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">Our Values</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Why Patients Trust Us</h2>
+          <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">Our Value</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">What you can expect from our team</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {ABOUT_VALUES.map((value, idx) => (
@@ -46,10 +82,6 @@ export const OurTeamView: React.FC<OurTeamViewProps> = ({ onSelectView, onOpenBo
       </div>
 
       <div className="bg-white text-slate-900 rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xl space-y-8">
-        <div className="max-w-2xl space-y-3">
-          <span className="text-xs uppercase font-bold text-blue-600 tracking-wider">Our Approach</span>
-          <h2 className="text-3xl font-extrabold text-slate-900">Three Pillars of Care</h2>
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PILLARS_OF_CARE.map((pillar, idx) => (
             <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
@@ -61,38 +93,17 @@ export const OurTeamView: React.FC<OurTeamViewProps> = ({ onSelectView, onOpenBo
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-lg flex items-start gap-4">
-          <ShieldCheck className="w-8 h-8 text-blue-600 shrink-0" />
-          <div>
-            <h4 className="font-bold text-sm text-slate-900">Sterilization Standards</h4>
-            <p className="text-xs text-slate-500 mt-1">We follow strict infection control protocols for your safety.</p>
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xl text-center space-y-4">
+          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">CONTACT</h2>
+          <h3 className="font-bold text-blue-700 text-lg">{CLINIC_SETTINGS.clinicName}</h3>
+          <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+            <span className="inline-flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-600" /> {CLINIC_SETTINGS.address}</span>
+            <a href={`tel:${CLINIC_SETTINGS.phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Phone className="w-4 h-4 text-blue-600" /> Tel: {CLINIC_SETTINGS.phone}</a>
+            <a href={`mailto:${CLINIC_SETTINGS.email}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Mail className="w-4 h-4 text-blue-600" /> Email: {CLINIC_SETTINGS.email}</a>
+            <span className="inline-flex items-center gap-2"><Clock className="w-4 h-4 text-blue-600" /> HOURS: Mon. to Fri: 9am to 6pm | Saturdays: 9am to 5pm</span>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-lg flex items-start gap-4">
-          <HeartHandshake className="w-8 h-8 text-blue-600 shrink-0" />
-          <div>
-            <h4 className="font-bold text-sm text-slate-900">Gentle Care</h4>
-            <p className="text-xs text-slate-500 mt-1">Our team prioritizes your comfort with a gentle, caring approach.</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-lg flex items-start gap-4">
-          <Award className="w-8 h-8 text-blue-600 shrink-0" />
-          <div>
-            <h4 className="font-bold text-sm text-slate-900">Modern Technology</h4>
-            <p className="text-xs text-slate-500 mt-1">Advanced equipment and techniques for optimal treatment outcomes.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl p-8 sm:p-12 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
-        <div>
-          <h3 className="text-2xl font-bold">Ready to Join Our Family?</h3>
-          <p className="text-xs text-blue-100 mt-1">Schedule your first visit and experience the First Avenue difference.</p>
-        </div>
-        <button onClick={onOpenBooking} className="px-8 py-3.5 rounded-full bg-blue-700 text-white font-bold text-xs hover:bg-blue-800 transition-colors shadow-lg shrink-0 flex items-center gap-2">
-          <Calendar className="w-4 h-4" /> Book Appointment
-        </button>
       </div>
 
     </div>
