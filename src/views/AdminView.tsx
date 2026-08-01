@@ -246,6 +246,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
     }
   };
 
+  const openManageModal = (apt: AppointmentRequest) => {
+    setSelectedApt(apt);
+    setActionDate(apt.preferredDate);
+    setActionTime(apt.preferredTimeSlot);
+    const known = doctors.map(d => `${d.name}${d.credentials ? `, ${d.credentials}` : ''}`);
+    const pref = apt.assignedDoctor || apt.doctorPreference;
+    setActionDoctor(known.includes(pref) ? pref : (known[0] || ''));
+  };
+
   const filteredAppointments = appointments.filter(a => {
     if (a.isEmergency) return false;
 
@@ -688,11 +697,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
                         <td className="p-4 text-right space-x-1">
                           <button
-                            onClick={() => {
-                              setSelectedApt(apt);
-                              setActionDate(apt.preferredDate);
-                              setActionTime(apt.preferredTimeSlot);
-                            }}
+                            onClick={() => openManageModal(apt)}
                             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors"
                           >
                             Manage
@@ -857,11 +862,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
                         <td className="p-4 text-right space-x-1">
                           <button
-                            onClick={() => {
-                              setSelectedApt(apt);
-                              setActionDate(apt.preferredDate);
-                              setActionTime(apt.preferredTimeSlot);
-                            }}
+                            onClick={() => openManageModal(apt)}
                             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors"
                           >
                             Manage
@@ -1476,9 +1477,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                   onChange={(e) => setActionDoctor(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
                 >
-                  <option value="Dr. Sarah Jenkins, DDS">Dr. Sarah Jenkins, DDS</option>
-                  <option value="Dr. Michael Vance, DMD">Dr. Michael Vance, DMD</option>
-                  <option value="Dr. Elena Rostova, DDS">Dr. Elena Rostova, DDS</option>
+                  {doctors.length === 0 ? (
+                    <option value="">No doctors yet — add one in the Doctors tab</option>
+                  ) : (
+                    doctors.map(doc => {
+                      const label = `${doc.name}${doc.credentials ? `, ${doc.credentials}` : ''}`;
+                      return <option key={doc.id} value={label}>{label}</option>;
+                    })
+                  )}
                 </select>
               </div>
 
