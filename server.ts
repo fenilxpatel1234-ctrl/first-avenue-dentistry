@@ -376,6 +376,25 @@ function buildIcs(apt: AppointmentRequest): string {
   ].join('\r\n');
 }
 
+// Build a Google Calendar link that opens the Google Calendar app on Android
+// with the appointment pre-filled (falls back to web on iPhone).
+function buildGoogleCalendarUrl(apt: AppointmentRequest): string {
+  const date = (apt.confirmedDate || apt.preferredDate || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+  const start = timeSlotTo24h(apt.confirmedTime || apt.preferredTimeSlot);
+  const [sh, sm] = start.split(':').map(Number);
+  const endMin = sh * 60 + sm + 60;
+  const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+  const enc = encodeURIComponent;
+  const title = `Dental Visit - ${apt.serviceName} - First Avenue Dentistry`;
+  const details = `Appointment with ${apt.assignedDoctor || apt.doctorPreference} at ${CLINIC_NAME}. Please arrive 10 minutes early. Questions? Call ${CLINIC_PHONE}.`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${enc(title)}&dates=${date}T${start.replace(':', '')}00/${date}T${end.replace(':', '')}00&details=${enc(details)}&location=${enc(CLINIC_ADDRESS)}&sf=true&output=xml`;
+}
+
+// webcal:// link opens Apple Calendar directly on iPhone/iPad with the event ready to save.
+function webcalUrl(apt: AppointmentRequest): string {
+  return `${SITE_URL.replace(/^https:\/\//i, 'webcal://')}/api/ics/${apt.id}`;
+}
+
 // --- Email builders ---
 function appointmentReceivedEmail(apt: AppointmentRequest): { subject: string; html: string } {
   const subject = `We Received Your Appointment Request - ${CLINIC_NAME}`;
@@ -419,7 +438,8 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
         )}
         <p style="font-size:13px;color:#64748b;line-height:1.7;">Please arrive 10 minutes early. If you need to reschedule, kindly contact us at least 24 hours in advance.</p>
         <p style="font-size:13px;color:#64748b;line-height:1.7;">A calendar invite is attached to this email — tap <strong>&#8220;Add to Calendar&#8221;</strong> to save it to your phone (works on both iPhone and Android).</p>
-        ${ctaButton('Add to Phone Calendar', `${SITE_URL}/api/ics/${apt.id}`, '#059669')}
+        ${ctaButton('Add to iPhone Calendar', webcalUrl(apt), '#059669')}
+        ${ctaButton('Add to Google Calendar (Android)', buildGoogleCalendarUrl(apt), '#ea4335')}
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
       `),
       ics: buildIcs(apt)
