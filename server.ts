@@ -338,6 +338,44 @@ function heading(text: string, sub?: string): string {
   ${sub ? `<p style="margin:0 0 24px;font-size:14px;color:#64748b;">${sub}</p>` : ''}`;
 }
 
+// Parse a time slot like "09:00 AM" / "01:30 PM" into 24-hour "HH:MM"
+function timeSlotTo24h(slot: string): string {
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i.exec(String(slot).trim());
+  if (!m) return '09:00';
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? m[2].padStart(2, '0') : '00';
+  const suffix = (m[3] || '').toUpperCase();
+  if (suffix === 'PM' && h < 12) h += 12;
+  if (suffix === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${min}`;
+}
+
+// Build a .ics calendar invite that opens the phone calendar on iOS and Android.
+// Floating local times (no Z) let each phone show the appointment in its own timezone.
+function buildIcs(apt: AppointmentRequest): string {
+  const date = (apt.confirmedDate || apt.preferredDate || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+  const start = timeSlotTo24h(apt.confirmedTime || apt.preferredTimeSlot);
+  const [sh, sm] = start.split(':').map(Number);
+  const endMin = sh * 60 + sm + 60;
+  const end = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+  const title = `Dental Visit - ${apt.serviceName} - First Avenue Dentistry`;
+  const description = `Your appointment with ${apt.assignedDoctor || apt.doctorPreference} at ${CLINIC_NAME}. Please arrive 10 minutes early. Questions? Call ${CLINIC_PHONE}.`;
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//First Avenue Dentistry//Appointment//EN',
+    'BEGIN:VEVENT',
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${description.replace(/\r?\n/g, '\\n')}`,
+    `LOCATION:${CLINIC_ADDRESS}`,
+    `DTSTART:${date}T${start}00`,
+    `DTEND:${date}T${end}00`,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
+
 // --- Email builders ---
 function appointmentReceivedEmail(apt: AppointmentRequest): { subject: string; html: string } {
   const subject = `We Received Your Appointment Request - ${CLINIC_NAME}`;
@@ -358,7 +396,7 @@ function appointmentReceivedEmail(apt: AppointmentRequest): { subject: string; h
   return { subject, html };
 }
 
-function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { subject: string; html: string } | null {
+function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { subject: string; html: string; ics?: string } | null {
   const patientName = `${apt.firstName} ${apt.lastName}`;
   const date = apt.confirmedDate || apt.preferredDate;
   const time = apt.confirmedTime || apt.preferredTimeSlot;
@@ -380,9 +418,11 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
           detailRow('Location', CLINIC_ADDRESS)
         )}
         <p style="font-size:13px;color:#64748b;line-height:1.7;">Please arrive 10 minutes early. If you need to reschedule, kindly contact us at least 24 hours in advance.</p>
-        ${ctaButton('Add to Calendar', `${SITE_URL}/#book-online`, '#059669')}
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">A calendar invite is attached to this email — tap <strong>&#8220;Add to Calendar&#8221;</strong> to save it to your phone (works on both iPhone and Android).</p>
+        ${ctaButton('Add to Phone Calendar', `${SITE_URL}/api/ics/${apt.id}`, '#059669')}
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
-      `)
+      `),
+      ics: buildIcs(apt)
     };
   }
   if (newStatus === 'Rescheduled') {
@@ -454,7 +494,7 @@ function resetCodeEmail(code: string): { subject: string; html: string } {
   return { subject, html };
 }
 
-async function deliverEmail(to: string, subject: string, html: string): Promise<void> {
+async function deliverEmail(to: string, subject: string, html: string, ics?: string): Promise<void> {
   console.log(`Delivering email to ${to}: [${subject}]`);
   logEmailToFile(to, subject, html);
 
@@ -462,7 +502,8 @@ async function deliverEmail(to: string, subject: string, html: string): Promise<
     try {
       const info = await smtpTransporter.sendMail({
         from: `"${CLINIC_NAME}" <${EMAIL_FROM}>`,
-        to, subject, html, text: 'Please view this email in an HTML-enabled client.'
+        to, subject, html, text: 'Please view this email in an HTML-enabled client.',
+        ...(ics ? { attachments: [{ filename: 'first-avenue-dentistry-appointment.ics', content: ics, contentType: 'text/calendar' }] } : {})
       });
       console.log('Email sent via SMTP:', info.messageId);
       return;
@@ -477,7 +518,7 @@ async function deliverEmail(to: string, subject: string, html: string): Promise<
 function sendStatusEmail(apt: AppointmentRequest, newStatus: string): void {
   const email = appointmentStatusEmail(apt, newStatus);
   if (!email) return;
-  deliverEmail(apt.email, email.subject, email.html);
+  deliverEmail(apt.email, email.subject, email.html, email.ics);
 }
 
 function sendNewAppointmentNotification(apt: AppointmentRequest): void {
@@ -642,31 +683,17 @@ app.get('/api/admin/export-csv', requireAdmin, (req: Request, res: Response) => 
   res.send(csvContent);
 });
 
-// Generate ICS File Download
+// Generate ICS File Download (for "Add to Calendar" fallback links)
 app.get('/api/ics/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const apt = appointmentDatabase.find(a => a.id === id);
-  
-  const title = apt ? `Dental Visit - ${apt.serviceName} at First Avenue Family Dentistry` : 'First Avenue Dentistry Visit';
-  const description = 'Please arrive 10 minutes early. Contact (555) 123-SMILE for questions.';
-  const location = '1420 First Avenue, Suite 300, New York, NY 10021';
-
-  const dateStr = (apt?.confirmedDate || apt?.preferredDate || '20260801').replace(/-/g, '');
-  
-  const icsContent = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//First Avenue Family Dentistry//Appointment Calendar//EN',
-    'BEGIN:VEVENT',
-    `SUMMARY:${title}`,
-    `DESCRIPTION:${description}`,
-    `LOCATION:${location}`,
-    `DTSTART:${dateStr}T140000Z`,
-    `DTEND:${dateStr}T150000Z`,
-    'STATUS:CONFIRMED',
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].join('\r\n');
+  const icsContent = buildIcs(apt || {
+    id: 'unknown', firstName: 'Your', lastName: 'Appointment',
+    email: '', phone: '', preferredDate: new Date().toISOString().split('T')[0],
+    preferredTimeSlot: '09:00 AM', serviceId: '', serviceName: 'Dental Visit',
+    doctorPreference: 'Our Team', insuranceProvider: '', isNewPatient: true,
+    notes: '', status: 'Approved', createdAt: new Date().toISOString()
+  } as AppointmentRequest);
 
   res.setHeader('Content-Type', 'text/calendar');
   res.setHeader('Content-Disposition', `attachment; filename="appointment-${id}.ics"`);
