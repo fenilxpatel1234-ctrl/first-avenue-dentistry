@@ -576,6 +576,50 @@ app.get('/api/analytics/visitors', (req: Request, res: Response) => {
   res.json({ count: getActiveVisitorCount(), timestamp: new Date().toISOString() });
 });
 
+// Free IP geolocation (no API key, no cost) - used to auto-detect the visitor's country
+const geoCache = new Map<string, { countryCode: string; country: string; t: number }>();
+const GEO_CACHE_TTL = 6 * 60 * 60 * 1000;
+
+app.get('/api/geo', async (req: Request, res: Response) => {
+  try {
+    const ip = getClientIp(req);
+    if (!ip || ip === 'unknown' || ip.startsWith('::1') || ip === '127.0.0.1') {
+      return res.json({ countryCode: '', country: '' });
+    }
+    const cached = geoCache.get(ip);
+    if (cached && Date.now() - cached.t < GEO_CACHE_TTL) {
+      return res.json({ countryCode: cached.countryCode, country: cached.country });
+    }
+
+    const providers: Array<() => Promise<{ countryCode: string; country: string }>> = [
+      async () => {
+        const r = await fetch(`https://ipwho.is/${ip}`, { signal: AbortSignal.timeout(3500) });
+        const d = await r.json() as { country_code?: string; country?: string };
+        if (!d.country_code) throw new Error('no result');
+        return { countryCode: d.country_code, country: d.country || '' };
+      },
+      async () => {
+        const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,countryCode,country`, { signal: AbortSignal.timeout(3500) });
+        const d = await r.json() as { status?: string; countryCode?: string; country?: string };
+        if (d.status !== 'success' || !d.countryCode) throw new Error('no result');
+        return { countryCode: d.countryCode, country: d.country || '' };
+      }
+    ];
+
+    let result: { countryCode: string; country: string } | null = null;
+    for (const p of providers) {
+      try {
+        result = await p();
+        break;
+      } catch {}
+    }
+    if (result) geoCache.set(ip, { ...result, t: Date.now() });
+    return res.json({ countryCode: result?.countryCode || '', country: result?.country || '' });
+  } catch {
+    return res.json({ countryCode: '', country: '' });
+  }
+});
+
 // Submit Appointment Request
 app.post('/api/appointments', (req: Request, res: Response) => {
   try {

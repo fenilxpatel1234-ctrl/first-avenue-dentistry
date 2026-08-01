@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PageView } from '../types';
 import { Sparkles, Calendar, CheckCircle2, Phone } from 'lucide-react';
 import { CLINIC_SETTINGS } from '../data/mockData';
-import { COUNTRIES, getCountryByTimezone } from '../components/BookingModal';
+import { COUNTRIES, detectCountryCode } from '../components/BookingModal';
 
 interface BookOnlineViewProps {
   onSelectView: (view: PageView) => void;
@@ -15,11 +15,15 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [countryCode, setCountryCode] = useState(() => getCountryByTimezone());
+  const [countryCode, setCountryCode] = useState('US');
   const [countrySearch, setCountrySearch] = useState('');
   const [countryOpen, setCountryOpen] = useState(false);
   const [countryIndex, setCountryIndex] = useState(0);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    detectCountryCode().then(code => setCountryCode(code));
+  }, []);
 
   const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES.find(c => c.code === 'US')!;
 

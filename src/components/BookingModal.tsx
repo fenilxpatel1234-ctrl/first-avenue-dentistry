@@ -138,20 +138,108 @@ export function getCountryByTimezone(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const map: Record<string, string> = {
+      // United States
       'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
       'America/Los_Angeles': 'US', 'America/Anchorage': 'US', 'Pacific/Honolulu': 'US',
+      'America/Indiana/Indianapolis': 'US', 'America/Indiana/Knox': 'US',
+      'America/Indiana/Marengo': 'US', 'America/Indiana/Petersburg': 'US',
+      'America/Indiana/Tell_City': 'US', 'America/Indiana/Vevay': 'US',
+      'America/Indiana/Vincennes': 'US', 'America/Indiana/Winamac': 'US',
+      'America/Kentucky/Louisville': 'US', 'America/Kentucky/Monticello': 'US',
+      'America/Detroit': 'US', 'America/Menominee': 'US', 'America/North_Dakota/Beulah': 'US',
+      'America/North_Dakota/Center': 'US', 'America/North_Dakota/New_Salem': 'US',
+      'America/Boise': 'US', 'America/Phoenix': 'US', 'America/Sitka': 'US',
+      'America/Yakutat': 'US', 'America/Juneau': 'US', 'America/Nome': 'US',
+      'America/Metlakatla': 'US', 'Pacific/Pago_Pago': 'US', 'Pacific/Guam': 'US',
+      // Canada (all zones - this was the main failure before)
       'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Montreal': 'CA',
       'America/Halifax': 'CA', 'America/Winnipeg': 'CA', 'America/Edmonton': 'CA',
+      'America/St_Johns': 'CA', 'America/Regina': 'CA', 'America/Whitehorse': 'CA',
+      'America/Yellowknife': 'CA', 'America/Iqaluit': 'CA', 'America/Moncton': 'CA',
+      'America/Glace_Bay': 'CA', 'America/Goose_Bay': 'CA', 'America/Nipigon': 'CA',
+      'America/Pangnirtung': 'CA', 'America/Rainy_River': 'CA', 'America/Rankin_Inlet': 'CA',
+      'America/Thunder_Bay': 'CA', 'America/Blanc-Sablon': 'CA', 'America/Cambridge_Bay': 'CA',
+      'America/Creston': 'CA', 'America/Dawson': 'CA', 'America/Dawson_Creek': 'CA',
+      'America/Fort_Nelson': 'CA', 'America/Inuvik': 'CA', 'America/Swift_Current': 'CA',
+      // United Kingdom & Europe
       'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Berlin': 'DE',
       'Europe/Madrid': 'ES', 'Europe/Rome': 'IT', 'Europe/Amsterdam': 'NL',
-      'Asia/Dubai': 'AE', 'Asia/Kolkata': 'IN', 'Asia/Shanghai': 'CN',
-      'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Australia/Sydney': 'AU',
-      'Pacific/Auckland': 'NZ', 'Africa/Cairo': 'EG', 'Africa/Lagos': 'NG',
+      'Europe/Lisbon': 'PT', 'Europe/Dublin': 'IE', 'Europe/Zurich': 'CH',
+      'Europe/Vienna': 'AT', 'Europe/Brussels': 'BE', 'Europe/Copenhagen': 'DK',
+      'Europe/Oslo': 'NO', 'Europe/Stockholm': 'SE', 'Europe/Helsinki': 'FI',
+      'Europe/Warsaw': 'PL', 'Europe/Prague': 'CZ', 'Europe/Bratislava': 'SK',
+      'Europe/Budapest': 'HU', 'Europe/Bucharest': 'RO', 'Europe/Sofia': 'BG',
+      'Europe/Athens': 'GR', 'Europe/Belgrade': 'RS', 'Europe/Zagreb': 'HR',
+      'Europe/Ljubljana': 'SI', 'Europe/Sarajevo': 'BA', 'Europe/Skopje': 'MK',
+      'Europe/Tirane': 'AL', 'Europe/Kyiv': 'UA', 'Europe/Minsk': 'BY',
+      'Europe/Moscow': 'RU', 'Europe/Istanbul': 'TR', 'Europe/Kiev': 'UA',
+      'Asia/Dubai': 'AE', 'Asia/Ashgabat': 'TM', 'Asia/Baku': 'AZ',
+      'Asia/Tbilisi': 'GE', 'Asia/Yerevan': 'AM', 'Asia/Jerusalem': 'IL',
+      // Asia & Pacific
+      'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN', 'Asia/Shanghai': 'CN',
+      'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Hong_Kong': 'HK',
+      'Asia/Singapore': 'SG', 'Asia/Kuala_Lumpur': 'MY', 'Asia/Bangkok': 'TH',
+      'Asia/Manila': 'PH', 'Asia/Jakarta': 'ID', 'Asia/Karachi': 'PK',
+      'Asia/Dhaka': 'BD', 'Asia/Colombo': 'LK', 'Asia/Kathmandu': 'NP',
+      'Asia/Taipei': 'TW', 'Asia/Ho_Chi_Minh': 'VN', 'Asia/Riyadh': 'SA',
+      'Asia/Tehran': 'IR', 'Asia/Baghdad': 'IQ', 'Asia/Beirut': 'LB',
+      'Asia/Amman': 'JO', 'Asia/Kuwait': 'KW', 'Asia/Doha': 'QA',
+      'Asia/Muscat': 'OM', 'Asia/Bahrain': 'BH', 'Asia/Nicosia': 'CY',
+      'Asia/Almaty': 'KZ', 'Asia/Tashkent': 'UZ', 'Asia/Bishkek': 'KG',
+      'Asia/Dushanbe': 'TJ', 'Asia/Ulaanbaatar': 'MN', 'Asia/Pyongyang': 'KP',
+      'Asia/Rangoon': 'MM', 'Asia/Yangon': 'MM', 'Asia/Phnom_Penh': 'KH',
+      'Asia/Vientiane': 'LA', 'Asia/Kabul': 'AF',
+      'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Brisbane': 'AU',
+      'Australia/Perth': 'AU', 'Australia/Adelaide': 'AU', 'Australia/Darwin': 'AU',
+      'Australia/Hobart': 'AU', 'Australia/Canberra': 'AU', 'Australia/Lord_Howe': 'AU',
+      'Pacific/Auckland': 'NZ', 'Pacific/Chatham': 'NZ', 'Pacific/Fiji': 'FJ',
+      // Latin America & Africa
+      'America/Sao_Paulo': 'BR', 'America/Rio_Branco': 'BR', 'America/Manaus': 'BR',
+      'America/Cuiaba': 'BR', 'America/Campo_Grande': 'BR', 'America/Bahia': 'BR',
+      'America/Belem': 'BR', 'America/Recife': 'BR', 'America/Fortaleza': 'BR',
+      'America/Maceio': 'BR', 'America/Porto_Velho': 'BR', 'America/Boa_Vista': 'BR',
+      'America/Cayenne': 'FR', 'America/Mexico_City': 'MX', 'America/Tijuana': 'MX',
+      'America/Monterrey': 'MX', 'America/Chihuahua': 'MX', 'America/Mazatlan': 'MX',
+      'America/Hermosillo': 'MX', 'America/Cancun': 'MX', 'America/Merida': 'MX',
+      'America/Guatemala': 'GT', 'America/El_Salvador': 'SV', 'America/Managua': 'NI',
+      'America/Costa_Rica': 'CR', 'America/Panama': 'PA', 'America/Havana': 'CU',
+      'America/Port-au-Prince': 'HT', 'America/Santo_Domingo': 'DO',
+      'America/Puerto_Rico': 'PR', 'America/Jamaica': 'JM', 'America/Nassau': 'BS',
+      'America/Bogota': 'CO', 'America/Caracas': 'VE', 'America/Lima': 'PE',
+      'America/Guayaquil': 'EC', 'America/La_Paz': 'BO', 'America/Asuncion': 'PY',
+      'America/Montevideo': 'UY', 'America/Santiago': 'CL', 'America/Buenos_Aires': 'AR',
+      'America/Argentina/Buenos_Aires': 'AR', 'America/Argentina/Cordoba': 'AR',
+      'America/Argentina/Salta': 'AR', 'America/Argentina/Jujuy': 'AR',
+      'America/Argentina/Tucuman': 'AR', 'America/Argentina/Catamarca': 'AR',
+      'America/Argentina/La_Rioja': 'AR', 'America/Argentina/San_Juan': 'AR',
+      'America/Argentina/Mendoza': 'AR', 'America/Argentina/San_Luis': 'AR',
+      'America/Argentina/Rio_Gallegos': 'AR', 'America/Argentina/Ushuaia': 'AR',
+      'Africa/Cairo': 'EG', 'Africa/Lagos': 'NG', 'Africa/Nairobi': 'KE',
+      'Africa/Casablanca': 'MA', 'Africa/Tunis': 'TN', 'Africa/Algiers': 'DZ',
+      'Africa/Tripoli': 'LY', 'Africa/Khartoum': 'SD', 'Africa/Accra': 'GH',
+      'Africa/Johannesburg': 'ZA', 'Africa/Addis_Ababa': 'ET', 'Africa/Dar_es_Salaam': 'TZ',
+      'Africa/Kampala': 'UG', 'Africa/Dakar': 'SN', 'Africa/Abidjan': 'CI',
     };
     return map[tz] || 'US';
   } catch {
     return 'US';
   }
+}
+
+// Best-effort country auto-detection: server-side IP geolocation first (accurate),
+// then browser timezone as fallback. Never throws.
+export async function detectCountryCode(): Promise<string> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch('/api/geo', { signal: ctrl.signal });
+    clearTimeout(timer);
+    const data = await res.json();
+    if (data && data.countryCode && COUNTRIES.some(c => c.code === data.countryCode)) {
+      return data.countryCode;
+    }
+  } catch {}
+  return getCountryByTimezone();
 }
 
 interface BookingModalProps {
@@ -180,7 +268,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, pre
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setCountryCode(getCountryByTimezone());
+    detectCountryCode().then(code => setCountryCode(code));
   }, []);
 
   useEffect(() => {

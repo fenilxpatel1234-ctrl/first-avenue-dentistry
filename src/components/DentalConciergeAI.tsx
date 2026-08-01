@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Sparkles, User, RefreshCw, Calendar, Check } from 'lucide-react';
-import { COUNTRIES, getCountryByTimezone } from './BookingModal';
+import { COUNTRIES, detectCountryCode } from './BookingModal';
 
 interface DentalConciergeAIProps {
   isOpen: boolean;
@@ -53,12 +53,16 @@ export const DentalConciergeAI: React.FC<DentalConciergeAIProps> = ({
   const [bookingData, setBookingData] = useState<BookingData>({
     firstName: '', lastName: '', email: '', phone: '', date: '', time: '', notes: ''
   });
-  const [countryCode, setCountryCode] = useState(() => getCountryByTimezone());
+  const [countryCode, setCountryCode] = useState('US');
   const [countrySearch, setCountrySearch] = useState('');
   const [countryListOpen, setCountryListOpen] = useState(false);
   const [countryIndex, setCountryIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    detectCountryCode().then(code => setCountryCode(code));
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
