@@ -1278,6 +1278,7 @@ function EmailAutomationsTab() {
             <div className={`text-lg font-black ${status?.smtpReady ? 'text-emerald-600' : 'text-red-400'}`}>
               {status?.smtpReady ? 'Connected' : 'Offline'}
             </div>
+            <div className="mt-1 text-[10px] text-slate-400 break-all">{status?.smtpHost}:{status?.smtpPort}</div>
           </div>
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-xs">
             <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">Emails Logged</div>
@@ -1290,12 +1291,33 @@ function EmailAutomationsTab() {
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs">
             <div className="font-bold text-slate-500 uppercase tracking-wider mb-1">Delivery</div>
             <div className="text-lg font-black text-emerald-600">By Code</div>
+            <div className="mt-1 text-[10px] text-slate-400 break-all">from: {status?.from}</div>
           </div>
         </div>
+
+        {!status?.smtpReady && status?.smtpError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 break-all">
+            <span className="font-bold">SMTP error: </span>{status.smtpError}
+          </div>
+        )}
 
         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-700 leading-relaxed">
           Emails are composed and sent directly by our own server code with a branded HTML design - no third-party email services involved. All outgoing messages are automatically saved to the log below.
         </div>
+
+        {!status?.smtpReady && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs space-y-2">
+            <div className="font-bold text-amber-700">Gmail blocks connections from Render's servers. To send emails from production, set these environment variables on Render with your own domain mailbox:</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-amber-600 font-mono">
+              <div>SMTP_HOST (e.g. mail.yourdomain.com)</div>
+              <div>SMTP_PORT (587 or 465)</div>
+              <div>SMTP_USER (your@domain.com)</div>
+              <div>SMTP_PASS (mailbox password)</div>
+              <div>EMAIL_FROM (sender address)</div>
+            </div>
+            <div className="text-amber-600">On Render: Dashboard → your service → Environment → add these → Deploy. No code changes needed.</div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">

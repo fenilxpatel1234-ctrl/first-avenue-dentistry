@@ -105,35 +105,43 @@ function authenticateAdmin(login: string, password: string): AdminUser | null {
 
 // Email delivery: built into the server code (SMTP via nodemailer) with file-log fallback.
 // No third-party email services are used - emails are composed and sent by our own code.
-const EMAIL_USER = 'fenilxpatel2642@gmail.com';
-const EMAIL_PASS = 'skww dpsl hobz stiz';
+// SMTP settings come from env vars so any mail server can be used:
+//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM
+// (Gmail works locally but blocks Render's IPs - use your own domain mailbox on production.)
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
+const SMTP_USER = process.env.SMTP_USER || 'fenilxpatel2642@gmail.com';
+const SMTP_PASS = process.env.SMTP_PASS || 'skww dpsl hobz stiz';
+const EMAIL_FROM = process.env.EMAIL_FROM || SMTP_USER;
 const EMAIL_LOG_FILE = path.join(DATA_DIR, 'email_log.json');
 
 let smtpTransporter: nodemailer.Transporter | null = null;
 let smtpReady = false;
+let smtpError = 'Not connected yet';
 
 (async () => {
-  try {
-    smtpTransporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com', port: 465, secure: true,
-      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
-    });
-    await smtpTransporter.verify();
-    smtpReady = true;
-    console.log('SMTP ready (465)');
-  } catch {
+  const configs = [
+    { host: SMTP_HOST, port: SMTP_PORT, secure: SMTP_PORT === 465, requireTLS: false },
+    { host: SMTP_HOST, port: SMTP_PORT === 465 ? 587 : SMTP_PORT, secure: false, requireTLS: true }
+  ];
+  for (const cfg of configs) {
     try {
       smtpTransporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com', port: 587, secure: false, requireTLS: true,
-        auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+        host: cfg.host, port: cfg.port, secure: cfg.secure, requireTLS: cfg.requireTLS,
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+        connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000
       });
       await smtpTransporter.verify();
       smtpReady = true;
-      console.log('SMTP ready (587)');
-    } catch {
-      console.log('SMTP unavailable - will use file log');
+      smtpError = '';
+      console.log(`SMTP ready (${cfg.host}:${cfg.port})`);
+      return;
+    } catch (err: any) {
+      smtpError = err.message || 'Unknown SMTP error';
+      console.log(`SMTP ${cfg.host}:${cfg.port} failed: ${smtpError}`);
     }
   }
+  console.log('SMTP unavailable - will use file log');
 })();
 
 function logEmailToFile(to: string, subject: string, html: string): void {
@@ -342,7 +350,7 @@ async function deliverEmail(to: string, subject: string, html: string): Promise<
   if (smtpReady && smtpTransporter) {
     try {
       const info = await smtpTransporter.sendMail({
-        from: `"${CLINIC_NAME}" <${EMAIL_USER}>`,
+        from: `"${CLINIC_NAME}" <${EMAIL_FROM}>`,
         to, subject, html, text: 'Please view this email in an HTML-enabled client.'
       });
       console.log('Email sent via SMTP:', info.messageId);
@@ -797,6 +805,10 @@ app.get('/api/admin/email-log', (req: Request, res: Response) => {
 app.get('/api/admin/email-status', (req: Request, res: Response) => {
   res.json({
     smtpReady,
+    smtpError,
+    smtpHost: SMTP_HOST,
+    smtpPort: SMTP_PORT,
+    from: EMAIL_FROM,
     logFile: fs.existsSync(EMAIL_LOG_FILE) ? fs.statSync(EMAIL_LOG_FILE).size : 0
   });
 });
