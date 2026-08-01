@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PageView } from '../types';
-import { Sparkles, Calendar, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Calendar, CheckCircle2, Phone, Clock, Mail, MapPin } from 'lucide-react';
+import { CLINIC_SETTINGS } from '../data/mockData';
 
 interface BookOnlineViewProps {
   onSelectView: (view: PageView) => void;
@@ -54,28 +55,42 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
           <Sparkles className="w-4 h-4" /> Book Your Visit
         </div>
         <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-          New Patients Welcome
+          Join Our Family of Smiles — New Patients Welcome!
         </h1>
         <p className="text-slate-600 text-base leading-relaxed">
-          We're accepting new patients! Book your appointment online and join our family of smiles.
+          Looking for a dental team that makes your comfort and care a priority? Our friendly professionals provide comprehensive general and cosmetic dentistry in a modern, welcoming environment. Whether it's a routine checkup or a smile makeover, we're here to make your visit easy and stress-free.
         </p>
+        <p className="text-slate-700 font-semibold text-base">Schedule Your Visit Today — Call or Book Online!</p>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <button onClick={onOpenBooking} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg transition-colors">
+            <Calendar className="w-4 h-4" /> Book Online
+          </button>
+          <a href={`tel:${CLINIC_SETTINGS.phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white border-2 border-blue-600 text-blue-700 hover:bg-blue-50 font-bold text-sm transition-colors">
+            <Phone className="w-4 h-4" /> Call {CLINIC_SETTINGS.phone}
+          </a>
+        </div>
+      </div>
+
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Your First Visit</h2>
+        <p className="text-slate-600 text-sm">Simple, friendly & stress-free — start to finish</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-lg space-y-3 text-center">
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-md mx-auto">01</div>
           <h3 className="font-bold text-slate-900 text-sm">Book Online or Call</h3>
-          <p className="text-xs text-slate-500 leading-relaxed">Schedule your visit using our online form or give us a call.</p>
+          <p className="text-xs text-slate-500 leading-relaxed">Every aspect of your dental health is addressed with compassion.</p>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-lg space-y-3 text-center">
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-md mx-auto">02</div>
           <h3 className="font-bold text-slate-900 text-sm">Share a Few Details</h3>
-          <p className="text-xs text-slate-500 leading-relaxed">Tell us about yourself and any concerns you'd like us to address.</p>
+          <p className="text-xs text-slate-500 leading-relaxed">Quick paperwork — most can be done right at home.</p>
         </div>
         <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-lg space-y-3 text-center">
           <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-md mx-auto">03</div>
           <h3 className="font-bold text-slate-900 text-sm">Leave Smiling</h3>
-          <p className="text-xs text-slate-500 leading-relaxed">Visit our welcoming clinic and experience gentle, compassionate care.</p>
+          <p className="text-xs text-slate-500 leading-relaxed">Comfortable, modern care for the whole family.</p>
         </div>
       </div>
 
@@ -123,6 +138,19 @@ export const BookOnlineView: React.FC<BookOnlineViewProps> = ({ onSelectView, on
               </button>
             </form>
           )}
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xl text-center space-y-4">
+          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">CONTACT</h2>
+          <h3 className="font-bold text-blue-700 text-lg">{CLINIC_SETTINGS.clinicName}</h3>
+          <div className="flex flex-col items-center gap-2 text-sm text-slate-600">
+            <span className="inline-flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-600" /> {CLINIC_SETTINGS.address}</span>
+            <a href={`tel:${CLINIC_SETTINGS.phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Phone className="w-4 h-4 text-blue-600" /> Tel: {CLINIC_SETTINGS.phone}</a>
+            <a href={`mailto:${CLINIC_SETTINGS.email}`} className="inline-flex items-center gap-2 hover:text-blue-600 transition-colors"><Mail className="w-4 h-4 text-blue-600" /> Email: {CLINIC_SETTINGS.email}</a>
+            <span className="inline-flex items-center gap-2"><Clock className="w-4 h-4 text-blue-600" /> HOURS: Mon. to Fri: 9am to 6pm | Saturdays: 9am to 5pm</span>
+          </div>
         </div>
       </div>
 
