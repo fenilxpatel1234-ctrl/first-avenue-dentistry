@@ -296,6 +296,10 @@ function emailShell(innerHtml: string): string {
                 <a href="mailto:firstavenuedentistry@gmail.com" style="color:#2563eb;text-decoration:none;">firstavenuedentistry@gmail.com</a><br>
                 Mon &ndash; Fri: 9am &ndash; 6pm &nbsp;|&nbsp; Sat: 9am &ndash; 5pm
               </div>
+              <div style="font-size:11px;color:#94a3b8;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0;">
+                This is an automated email from ${CLINIC_NAME}. Please do not reply to this message &mdash; replies are not monitored.<br>
+                For assistance, please call <a href="tel:+15192076890" style="color:#2563eb;text-decoration:none;">${CLINIC_PHONE}</a>.
+              </div>
               <div style="font-size:10px;color:#94a3b8;margin-top:12px;">&copy; ${new Date().getFullYear()} ${CLINIC_NAME}. All rights reserved.</div>
             </td>
           </tr>
