@@ -84,11 +84,11 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onSelectView, onOp
 
           <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xl space-y-4">
             <h3 className="text-lg font-bold text-slate-900">Medical History Forms</h3>
-            <p className="text-xs text-slate-500">Download and complete before your visit to save time.</p>
+            <p className="text-xs text-slate-500">Download and complete before your visit to save time. Forms open in your browser or PDF viewer so you can fill them out digitally.</p>
             <div className="space-y-2">
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('Downloading Adult Medical History Form...'); }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - ADULT</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('Downloading Child Over 5 Form...'); }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - CHILD OVER 5</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('Downloading Child Under 5 Form...'); }} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - CHILD UNDER 5</a>
+              <a href="/forms/medical-history-adult.pdf" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - ADULT</a>
+              <a href="/forms/medical-history-child-over-5.pdf" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - CHILD OVER 5</a>
+              <a href="/forms/medical-history-child-under-5.pdf" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"><Download className="w-4 h-4 text-blue-500" /> MEDICAL HISTORY - CHILD UNDER 5</a>
             </div>
           </div>
         </div>
