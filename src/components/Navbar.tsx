@@ -80,6 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onMouseLeave={() => setServicesOpen(false)}
                   >
                     <button
+                      onClick={() => onSelectView('services')}
                       className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
                         currentView === 'services'
                           ? 'bg-blue-600 text-white shadow-md'
@@ -184,7 +185,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 return (
                   <div key="services" className="space-y-1">
                     <button
-                      onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
+                      onClick={() => {
+                        onSelectView('services');
+                        setMobileMenuOpen(false);
+                      }}
                       className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold text-blue-600 flex items-center justify-between"
                     >
                       Services

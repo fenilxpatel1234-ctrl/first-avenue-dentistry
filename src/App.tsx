@@ -7,6 +7,7 @@ import { DentalConciergeAI } from './components/DentalConciergeAI';
 import { CookieConsent } from './components/CookieConsent';
 
 import { HomeView } from './views/HomeView';
+import { ServicesView } from './views/ServicesView';
 import { ServiceDetailView } from './views/ServiceDetailView';
 import { BookOnlineView } from './views/BookOnlineView';
 import { OurTeamView } from './views/OurTeamView';
@@ -29,7 +30,7 @@ export default function App() {
     const viewMap: Record<string, PageView> = {
       'admin': 'admin', 'secure-admin-login': 'admin',
       'reset-password': 'reset-password',
-      'home': 'home', 'book-online': 'book-online', 'emergency': 'emergency',
+      'home': 'home', 'services': 'services', 'book-online': 'book-online', 'emergency': 'emergency',
       'our-team': 'our-team', 'contact-us': 'contact-us', 'blog': 'blog',
       'legal': 'legal', 'service-detail': 'service-detail'
     };
@@ -87,6 +88,14 @@ export default function App() {
             serviceId={selectedServiceId || 'crowns-bridges'}
             onSelectView={handleSelectView}
             onOpenBooking={() => handleOpenBooking(selectedServiceId)}
+            onSelectService={handleSelectService}
+          />
+        );
+      case 'services':
+        return (
+          <ServicesView
+            onSelectView={handleSelectView}
+            onOpenBooking={() => handleOpenBooking()}
             onSelectService={handleSelectService}
           />
         );
