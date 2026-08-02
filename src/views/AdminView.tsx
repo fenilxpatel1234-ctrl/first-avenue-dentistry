@@ -92,10 +92,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   // Selected appointment for modal action
   const [selectedApt, setSelectedApt] = useState<AppointmentRequest | null>(null);
-  const [actionDoctor, setActionDoctor] = useState('Dr. Sarah Jenkins, DDS');
+  const [actionDoctor, setActionDoctor] = useState('');
   const [actionDate, setActionDate] = useState('');
   const [actionTime, setActionTime] = useState('');
   const [actionNotes, setActionNotes] = useState('');
+  const [actionReason, setActionReason] = useState('');
 
   const fetchAppointments = async () => {
     setIsLoading(true);
@@ -232,15 +233,46 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   const handleUpdateStatus = async (id: string, newStatus: AppointmentRequest['status']) => {
     try {
+      if (newStatus === 'Approved') {
+        if (!actionDoctor.trim()) {
+          alert('Please assign an available doctor before confirming. The patient will see this doctor in the email.');
+          return;
+        }
+        if (!actionDate) {
+          alert('A confirmed date is required before confirming.');
+          return;
+        }
+        if (!actionTime.trim()) {
+          alert('A confirmed time is required before confirming.');
+          return;
+        }
+      }
+      if (newStatus === 'Rescheduled') {
+        if (!actionReason.trim()) {
+          alert('A reason is required to reschedule. The patient will see it in the email.');
+          return;
+        }
+        if (!actionDate || !actionTime.trim()) {
+          alert('Please set the new date and time for the rescheduled appointment.');
+          return;
+        }
+      }
+      if (newStatus === 'Rejected') {
+        if (!actionReason.trim()) {
+          alert('A reason is required to decline. The patient will see it in the email.');
+          return;
+        }
+      }
       const res = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
-          assignedDoctor: actionDoctor,
+          assignedDoctor: actionDoctor || undefined,
           confirmedDate: actionDate || undefined,
           confirmedTime: actionTime || undefined,
-          adminNotes: actionNotes
+          adminNotes: actionNotes,
+          reason: actionReason
         })
       });
 
@@ -248,6 +280,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
       if (data.success) {
         fetchAppointments();
         setSelectedApt(null);
+      } else {
+        alert(data.error || 'Failed to update status.');
       }
     } catch (err) {
       alert('Failed to update status.');
@@ -266,11 +300,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
   const openManageModal = (apt: AppointmentRequest) => {
     setSelectedApt(apt);
-    setActionDate(apt.preferredDate);
-    setActionTime(apt.preferredTimeSlot);
+    setActionDate(apt.confirmedDate || apt.preferredDate);
+    setActionTime(apt.confirmedTime || apt.preferredTimeSlot);
+    setActionNotes(apt.adminNotes || '');
+    setActionReason(apt.reason || '');
     const known = doctors.map(d => `${d.name}${d.credentials ? `, ${d.credentials}` : ''}`);
     const pref = apt.assignedDoctor || apt.doctorPreference;
-    setActionDoctor(known.includes(pref) ? pref : (known[0] || ''));
+    // Keep the doctor the patient actually chose (if it's a real doctor on file).
+    // If the patient said "Any available doctor", leave the field empty so the
+    // admin MUST pick one before confirming — no silent defaults.
+    const anyDoctor = /any\s*(available|doctor)?/i.test(pref);
+    setActionDoctor(anyDoctor ? '' : (known.includes(pref) ? pref : (apt.assignedDoctor && known.includes(apt.assignedDoctor) ? apt.assignedDoctor : '')));
   };
 
   const filteredAppointments = appointments.filter(a => {
@@ -1665,26 +1705,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1">Assign Doctor</label>
+                <label className="block text-xs font-semibold mb-1">
+                  Assign Doctor <span className="text-red-500 font-bold">*</span>
+                </label>
                 <select
                   value={actionDoctor}
                   onChange={(e) => setActionDoctor(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
+                  className={`w-full px-3 py-2 bg-white border rounded-xl text-xs ${actionDoctor ? 'border-slate-200' : 'border-amber-300'}`}
                 >
-                  {doctors.length === 0 ? (
-                    <option value="">No doctors yet — add one in the Doctors tab</option>
-                  ) : (
-                    doctors.map(doc => {
-                      const label = `${doc.name}${doc.credentials ? `, ${doc.credentials}` : ''}`;
-                      return <option key={doc.id} value={label}>{label}</option>;
-                    })
-                  )}
+                  <option value="" disabled>— Select an available doctor to confirm —</option>
+                  {doctors.map(doc => {
+                    const label = `${doc.name}${doc.credentials ? `, ${doc.credentials}` : ''}`;
+                    return <option key={doc.id} value={label}>{label} — {doc.title}</option>;
+                  })}
                 </select>
+                {selectedApt.doctorPreference && !/any\s*(available|doctor)?/i.test(selectedApt.doctorPreference) && (
+                  <p className="text-[10px] text-blue-600 mt-1 font-semibold">
+                    Patient requested: {selectedApt.doctorPreference}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Confirmed Date</label>
+                  <label className="block text-xs font-semibold mb-1">Confirmed Date <span className="text-red-500 font-bold">*</span></label>
                   <input
                     type="date"
                     value={actionDate}
@@ -1693,18 +1737,32 @@ export const AdminView: React.FC<AdminViewProps> = ({ onSelectView }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Confirmed Time</label>
+                  <label className="block text-xs font-semibold mb-1">Confirmed Time <span className="text-red-500 font-bold">*</span></label>
                   <input
                     type="text"
                     value={actionTime}
                     onChange={(e) => setActionTime(e.target.value)}
+                    placeholder="e.g. 02:00 PM"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">Internal Admin Notes</label>
+                <label className="block text-xs font-semibold mb-1">
+                  Reason for Reschedule / Decline <span className="text-red-500 font-bold">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  placeholder="Required when rescheduling or declining — this reason is sent to the patient by email."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1">Internal Admin Notes (not sent to patient)</label>
                 <textarea
                   rows={2}
                   value={actionNotes}

@@ -58,6 +58,7 @@ export interface AppointmentRequest {
   confirmedDate?: string;
   confirmedTime?: string;
   adminNotes?: string;
+  reason?: string;
   createdAt: string;
   isEmergency?: boolean;
 }

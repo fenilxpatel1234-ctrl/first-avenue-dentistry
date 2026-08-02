@@ -462,7 +462,7 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
           detailRow('New Time', time) +
           detailRow('Doctor', doctor) +
           detailRow('Service', apt.serviceName) +
-          (apt.adminNotes ? detailRow('Notes', apt.adminNotes) : '')
+          (apt.reason || apt.adminNotes ? detailRow('Reason', apt.reason || apt.adminNotes) : '')
         )}
         <p style="font-size:13px;color:#64748b;line-height:1.7;">If this new time doesn't work for you, please call us and we will be happy to help.</p>
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
@@ -477,8 +477,8 @@ function appointmentStatusEmail(apt: AppointmentRequest, newStatus: string): { s
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
           <div style="font-size:14px;font-weight:800;color:#b91c1c;">&#10060; Not Available</div>
         </div>
-        ${apt.adminNotes ? summaryTable(detailRow('Notes from our team', apt.adminNotes)) : ''}
-        <p style="font-size:13px;color:#64748b;line-height:1.7;">Please feel free to book another appointment through our website, or call us and we will find a time that works for you.</p>
+        ${apt.reason || apt.adminNotes ? summaryTable(detailRow('Reason for Declining', apt.reason || apt.adminNotes)) : ''}
+        <p style="font-size:13px;color:#64748b;line-height:1.7;">Please feel free to book another appointment through our website, or call us and we will find a time that works for you. We apologize for any inconvenience.</p>
         ${ctaButton('Book Another Appointment', `${SITE_URL}/#book-online`, '#b91c1c')}
         ${ctaButton('Call Our Office', 'tel:+15192076890')}
       `)
@@ -752,7 +752,7 @@ app.get('/api/appointments', requireAdmin, (req: Request, res: Response) => {
 // Admin: Update appointment status / reschedule / notes
 app.patch('/api/appointments/:id', requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status, assignedDoctor, confirmedDate, confirmedTime, adminNotes } = req.body;
+  const { status, assignedDoctor, confirmedDate, confirmedTime, adminNotes, reason } = req.body;
 
   const aptIndex = appointmentDatabase.findIndex(a => a.id === id);
   if (aptIndex === -1) {
@@ -761,13 +761,49 @@ app.patch('/api/appointments/:id', requireAdmin, (req: Request, res: Response) =
 
   const existing = appointmentDatabase[aptIndex];
   const oldStatus = existing.status;
+
+  if (status === 'Approved') {
+    // Admin MUST pick an available doctor before confirming.
+    const doc = String(assignedDoctor || '').trim();
+    const knownDoctors = doctorDatabase.map(d => `${d.name}${d.credentials ? `, ${d.credentials}` : ''}`);
+    if (!doc) {
+      return res.status(400).json({ error: 'Please assign an available doctor before confirming the appointment.' });
+    }
+    if (!knownDoctors.some(k => k.toLowerCase() === doc.toLowerCase())) {
+      return res.status(400).json({ error: 'The assigned doctor is not in your doctors list. Add or select a valid doctor first.' });
+    }
+    if (!confirmedDate) return res.status(400).json({ error: 'A confirmed date is required before confirming the appointment.' });
+    if (!confirmedTime) return res.status(400).json({ error: 'A confirmed time is required before confirming the appointment.' });
+  }
+
+  if ((status === 'Rejected' || status === 'Rescheduled')) {
+    const theReason = String(reason || adminNotes || '').trim();
+    if (!theReason) {
+      return res.status(400).json({
+        error: status === 'Rejected'
+          ? 'A reason is required to decline the appointment. The patient will see it in the email.'
+          : 'A reason is required to reschedule. The patient will see it in the email.'
+      });
+    }
+  }
+
+  if (status === 'Rescheduled') {
+    if (!confirmedDate) return res.status(400).json({ error: 'A new date is required when rescheduling.' });
+    if (!confirmedTime) return res.status(400).json({ error: 'A new time is required when rescheduling.' });
+  }
+
+  const assigned: string | undefined =
+    status === 'Approved' ? assignedDoctor
+    : (assignedDoctor !== undefined ? assignedDoctor : existing.assignedDoctor);
+
   appointmentDatabase[aptIndex] = {
     ...existing,
     ...(status && { status }),
-    ...(assignedDoctor !== undefined && { assignedDoctor }),
+    ...(assigned !== undefined && { assignedDoctor: assigned }),
     ...(confirmedDate !== undefined && { confirmedDate }),
     ...(confirmedTime !== undefined && { confirmedTime }),
-    ...(adminNotes !== undefined && { adminNotes })
+    ...(adminNotes !== undefined && { adminNotes }),
+    ...(reason !== undefined ? { reason: String(reason).trim() } : existing.reason ? { reason: existing.reason } : {})
   };
   persistAppointments();
 
