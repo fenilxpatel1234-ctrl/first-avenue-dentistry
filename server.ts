@@ -7,6 +7,7 @@ import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 import { AppointmentRequest, PatientMessage, AdminUser, ResetToken, Doctor, SiteReview } from './src/types';
 import { initFirebase, isFirebaseReady, fbGet, fbSet } from './src/lib/firebase';
+import { CLINIC_SETTINGS, SERVICES_LIST, SERVICE_DETAILS } from './src/data/mockData';
 
 dotenv.config({ path: '.env.local' });
 
@@ -1188,18 +1189,71 @@ app.post('/api/admin/test-email', requireAdmin, (req: Request, res: Response) =>
   res.json({ success: true, message: `Email queued for ${target}.`, smtpReady });
 });
 
-// Local FAQ responses (works without API key)
+// --- AI Dental Concierge Answer Engine ---
+// Every treatment answer is generated live from the same service data used on
+// the Services page (src/data/mockData.ts), so the bot always explains exactly
+// what we promote on the website.
+
+const SERVICE_TOPICS: Array<{ id: string; title: string; aliases: string[] }> = [
+  { id: 'root-canals', title: 'Root Canals', aliases: ['root canal', 'endodontic', 'abscessed tooth', 'infected pulp', 'tooth infection', 'toothache', 'tooth ache'] },
+  { id: 'dental-implant', title: 'Dental Implants', aliases: ['dental implant', 'implants', 'mouth implant', 'missing tooth', 'missing teeth', 'lost tooth', 'replace a tooth', 'restore a tooth'] },
+  { id: 'orthodontics', title: 'Orthodontics', aliases: ['invisalign', 'clear aligner', 'aligners', 'brace', 'braces', 'straighten', 'misaligned', 'crooked', 'overbite', 'underbite', 'orthodont'] },
+  { id: 'porcelain-veneers', title: 'Porcelain Veneers', aliases: ['veneers', 'veneer', 'smile makeover', 'cover my teeth', 'fix my gap', 'fix my chips'] },
+  { id: 'teeth-whitening', title: 'Teeth Whitening', aliases: ['whitening', 'white my teeth', 'yellow teeth', 'stained teeth', 'discolored', 'discolour', 'zoom whitening'] },
+  { id: 'childrens-dentistry', title: "Children's Dentistry", aliases: ['children', 'child', 'kids', 'pediatric', 'toddler', 'my daughter', 'my son'] },
+  { id: 'sedation-sleep-dentistry', title: 'Sedation Dentistry', aliases: ['sedation', 'dental anxiety', 'nervous', 'afraid of dentist', 'fear', 'phobia', 'laughing gas', 'nitrous', 'sleep dentistry', 'gag reflex'] },
+  { id: 'crowns-bridges', title: 'Crowns & Bridges', aliases: ['crown', 'crowns', 'bridge', 'bridges', 'cracked tooth', 'broken tooth', 'weak tooth'] },
+  { id: 'teeth-cleaning', title: 'Teeth Cleaning', aliases: ['cleaning', 'dental cleaning', 'scale', 'tartar', 'plaque', 'checkup', 'check-up', 'hygiene', 'routine visit', 'oral health'] },
+  { id: 'wisdom-teeth-extraction', title: 'Wisdom Teeth Extraction', aliases: ['wisdom', 'extraction', 'extract', 'remove a tooth', 'pull the tooth', 'pulled tooth', 'impacted'] },
+  { id: 'oral-surgery', title: 'Oral Surgery', aliases: ['oral surgery', 'flap surgery', 'bone graft', 'bone regeneration', 'tissue regeneration', 'surgical extraction'] },
+  { id: 'oral-cancer-screening', title: 'Oral Cancer Screening', aliases: ['cancer', 'screening', 'velscope', 'lesion', 'sore that will not heal'] },
+];
+
+function pickServiceTopic(lower: string) {
+  let best: { id: string; title: string; matched: string } | null = null;
+  for (const topic of SERVICE_TOPICS) {
+    for (const alias of topic.aliases) {
+      if (lower.includes(alias)) {
+        if (!best || alias.length > best.matched.length) {
+          best = { id: topic.id, title: topic.title, matched: alias };
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function buildTreatmentAnswer(topicId: string, topicTitle: string): string {
+  const service = SERVICE_DETAILS[topicId];
+  if (!service) return '';
+  const benefits = (service.benefits || []).slice(0, 4);
+  const intent = `We'd be happy to walk you through ${topicTitle.toLowerCase()} — this is one of our most popular services!`;
+
+  let lines = [intent];
+  if (service.description) lines.push(`\n${service.description}`);
+  if (service.procedure) lines.push(`\nWhat the treatment involves:\n• ${service.procedure}`);
+  if (service.recoveryTime) lines.push(`\nRecovery: ${service.recoveryTime}`);
+  if (benefits.length) lines.push(`\nKey benefits:\n${benefits.map(b => `• ${b}`).join('\n')}`);
+  lines.push(`\nEvery smile is different, so we'll personalise this for you at a consultation. Want me to book an appointment? 😊`);
+
+  return lines.join('\n');
+}
+
+function buildServicesOverview(): string {
+  const list = SERVICES_LIST.map(s => `• ${s.label} — ${s.description}`).join('\n');
+  return `We offer a full range of dental care at First Avenue Dentistry. Here's what you can choose from:\n\n${list}\n\nNot sure which one fits you? Ask me about any treatment — or tell me your concern and I'll point you in the right direction. 😊`;
+}
+
 const FAQ_RESPONSES: Record<string, string> = {
-  'services': 'We offer a full range of dental services including: General Checkups & Cleanings, Bespoke Porcelain Veneers, 3D Guided Dental Implants, Invisalign Clear Aligners, Professional Zoom Teeth Whitening, Root Canal Therapy, Crowns & Bridges, Full & Partial Dentures, Pediatric Dentistry, Gum Disease Treatment, Oral Surgery & Extractions, and Sedation Dentistry.',
-  'hours': 'Our office hours are: Monday – Friday 8:00 AM – 5:00 PM, Saturday 9:00 AM – 2:00 PM, and Sunday Closed.',
-  'new patient': 'Yes, we are accepting new patients! You can book your first visit online or give us a call.',
-  'insurance': 'We accept most major dental insurance plans including Delta Dental, Cigna, and more. We also offer flexible payment plans for self-pay patients.',
-  'whitening': 'Our Professional Zoom Teeth Whitening treatment can brighten your smile in about one hour. Results last 6-12 months with proper care.',
-  'implant': 'Our 3D Guided Dental Implants use advanced digital imaging for precise, comfortable placement. The process typically takes 3-6 months from start to finish.',
-  'invisalign': 'Invisalign clear aligners straighten your teeth discreetly. Treatment time varies from 6-18 months depending on your case.',
-  'veneers': 'Bespoke Porcelain Veneers are custom-crafted shells that cover the front of your teeth. They can fix gaps, chips, stains, and misalignment in just 2-3 visits.',
-  'cost': 'Treatment costs vary based on your specific needs. We provide detailed estimates during your consultation and offer payment plans.',
-  'emergency': 'If you have a dental emergency, please call us immediately. For severe pain, swelling, or trauma, we offer same-day emergency appointments.',
+  'hours': `Our office hours are: Monday – Friday ${CLINIC_SETTINGS.hours.weekdays}, Saturday ${CLINIC_SETTINGS.hours.saturday}, and Sunday ${CLINIC_SETTINGS.hours.sunday}.`,
+  'new patient': 'Yes, we are welcoming new patients! You can book your first visit online right now — it only takes about 30 seconds — or call us and we will set everything up for you.',
+  'insurance': 'We accept most major dental insurance plans and offer flexible payment plans for self-pay patients. Bring your insurance details to your first visit and our front desk will handle the rest.',
+  'cost': 'Treatment costs depend on your specific needs. We provide clear, written estimates before any work begins and we offer payment plans to help spread the cost.',
+  'emergency': `If this is a dental emergency, don't wait — call us right away at ${CLINIC_SETTINGS.phone}. For severe pain, swelling, or trauma we offer same-day emergency appointments.`,
+  'first visit': 'Your first visit starts with a friendly chat, a full examination, and any X-rays or screening you need. You\'ll leave with a clear treatment plan. Plan on about 45–60 minutes.',
+  'payment': 'We make care affordable with insurance billing and flexible payment plans.',
+  'parking': 'We have convenient parking available right at the office.',
+  'location': `You'll find us at 308 Wellington Street, St. Thomas, ON N5R 2S9 — easy to reach with parking on site.`
 };
 
 // AI Dental Concierge Endpoint
@@ -1212,32 +1266,50 @@ app.post('/api/ai/dental-assistant', async (req: Request, res: Response) => {
     }
 
     const lower = input.toLowerCase();
+    const trimmed = lower.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // Check for booking intent
-    const bookingKeywords = ['book', 'schedule', 'appointment', 'make an appointment', 'book an appointment', 'schedule a visit', 'want to book', 'booking'];
-    const isBookingIntent = bookingKeywords.some(k => lower.includes(k));
-
-    if (isBookingIntent || lower.includes('book') || lower.includes('schedule')) {
+    // 1) Booking intent
+    const bookingKeywords = ['make an appointment', 'book an appointment', 'schedule a visit', 'want to book', 'book appointment', 'i want to book', 'can i book', 'id like to book', "i'd like to book", 'book online'];
+    const isBookingIntent = bookingKeywords.some(k => trimmed.includes(k));
+    if (isBookingIntent) {
       return res.json({
         answer: "I'd be happy to help you book an appointment! Let me guide you through it.\n\nFirst, what's your first name?",
         action: 'booking_start'
       });
     }
 
-    // Try local FAQ match first
+    // 2) Most specific treatment explainer (built from the services page data)
+    const topic = pickServiceTopic(lower);
+    if (topic) {
+      return res.json({ answer: buildTreatmentAnswer(topic.id, topic.title) });
+    }
+
+    // 2b) Office hours / day questions
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const asksHours = ['open', 'hours', 'close', 'timing', 'time', 'when are you', 'what time'].some(k => trimmed.includes(k));
+    if (asksHours || dayNames.some(d => lower.includes(d))) {
+      return res.json({ answer: FAQ_RESPONSES['hours'] + '\n\nWould you like me to help you book an appointment?' });
+    }
+
+    // 3) "What services do you offer?" overview
+    if (trimmed.includes('service') || trimmed.includes('treat')) {
+      return res.json({ answer: buildServicesOverview() });
+    }
+
+    // 4) Quick FAQs
     for (const [keyword, answer] of Object.entries(FAQ_RESPONSES)) {
       if (lower.includes(keyword)) {
-        return res.json({ answer: answer + ' Would you like to schedule a consultation? I can help you book an appointment right now.' });
+        return res.json({ answer: answer + '\n\nWould you like me to help you book an appointment, or can I explain any treatment for you?' });
       }
     }
 
-    // Default fallback
+    // 5) Friendly default
     return res.json({
-      answer: "Thank you for your question! At First Avenue Dentistry, we're here to help with all your dental needs. Please give us a call at (519) 207-6890 or book an appointment online and our team will be happy to assist you!"
+      answer: "I'm here to help with anything about your smile! 😊\n\nAsk me about our treatments — cleaning, whitening, veneers, implants, Invisalign, root canals, kids' dentistry, sedation and more — plus office hours, insurance, pricing or booking. Or feel free to call our team at " + CLINIC_SETTINGS.phone + " and we'll take great care of you."
     });
   } catch (err: any) {
     return res.json({
-      answer: "Thank you for your question. Please call us at (519) 207-6890 for immediate assistance or book an appointment online!"
+      answer: "Thank you for your question. Please call us at " + CLINIC_SETTINGS.phone + " for immediate assistance or book an appointment online!"
     });
   }
 });
