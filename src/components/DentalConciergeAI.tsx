@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Sparkles, User, RefreshCw, Calendar, Check } from 'lucide-react';
 import { COUNTRIES, detectCountryCode } from './BookingModal';
+import { parseFlexibleDate, toSlug, isDateInPast, formatFriendlyDate, todaySlug } from '../lib/dateUtil';
 
 interface DentalConciergeAIProps {
   isOpen: boolean;
@@ -181,15 +182,25 @@ Is there anything else I can help you with?`);
         setCountryListOpen(false);
         setCountrySearch('');
         setBookingStage('date');
-        addAiMsg(`Thanks! Your number ${selectedCountry.dial} ${value} has been noted. What date would you like to come in? (e.g., 2026-08-15 or August 15, 2026)`);
+        addAiMsg(`Thanks! Your number ${selectedCountry.dial} ${value} has been noted. What date would you like to come in? (today is ${todaySlug()}; pick any date from today onward, e.g. ${formatFriendlyDate(new Date(Date.now() + 2 * 86400000))})`);
         return true;
       }
 
-      case 'date':
-        setBookingData(prev => ({ ...prev, date: value }));
+      case 'date': {
+        const parsed = parseFlexibleDate(value);
+        if (!parsed) {
+          addAiMsg("I couldn't recognize that date. Please reply like 2026-08-15 or August 15, 2026.");
+          return true;
+        }
+        if (isDateInPast(toSlug(parsed))) {
+          addAiMsg(`That date (${formatFriendlyDate(parsed)}) has already passed — please pick a date from today onward.`);
+          return true;
+        }
+        setBookingData(prev => ({ ...prev, date: toSlug(parsed) }));
         setBookingStage('time');
-        addAiMsg(`What time works best for you? (e.g., 10:00 AM, 2:30 PM)`);
+        addAiMsg(`Great — ${formatFriendlyDate(parsed)} works! What time works best for you? (e.g., 10:00 AM, 2:30 PM)`);
         return true;
+      }
 
       case 'time':
         setBookingData(prev => ({ ...prev, time: value }));
