@@ -150,11 +150,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
               About Our Practice <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="h-80 lg:h-auto bg-slate-100">
+          <div className="relative bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 aspect-[4/3] lg:aspect-auto lg:h-full">
             <img
               src="https://static.wixstatic.com/media/2a5871_80caaa27bd5949c89db52cd2ab65c1bf~mv2.png"
               alt="First Avenue Dentistry Team"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>

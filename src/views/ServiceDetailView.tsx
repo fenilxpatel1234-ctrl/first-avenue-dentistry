@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PageView, ServiceDetail } from '../types';
 import { SERVICE_DETAILS, SERVICES_LIST } from '../data/mockData';
 import { Sparkles, Calendar, CheckCircle2, ChevronRight } from 'lucide-react';
@@ -16,6 +16,7 @@ export const ServiceDetailView: React.FC<ServiceDetailViewProps> = ({
   onOpenBooking,
   onSelectService
 }) => {
+  const [image2Portrait, setImage2Portrait] = useState(false);
   const service = SERVICE_DETAILS[serviceId];
   const currentIndex = SERVICES_LIST.findIndex(s => s.id === serviceId);
   const prevService = currentIndex > 0 ? SERVICES_LIST[currentIndex - 1] : null;
@@ -57,8 +58,8 @@ export const ServiceDetailView: React.FC<ServiceDetailViewProps> = ({
             <Calendar className="w-4 h-4" /> Book Appointment
           </button>
         </div>
-        <div className="h-72 lg:h-auto bg-slate-100">
-          <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
+        <div className="relative bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 aspect-[4/3] lg:aspect-auto lg:h-full">
+          <img src={service.image} alt={service.title} className="w-full h-full object-contain" />
         </div>
       </div>
 
@@ -91,8 +92,13 @@ export const ServiceDetailView: React.FC<ServiceDetailViewProps> = ({
       </div>
 
       {service.image2 && (
-        <div className="rounded-3xl overflow-hidden shadow-xl border border-slate-200/80">
-          <img src={service.image2} alt={service.title} className="w-full h-[400px] object-cover" />
+        <div className={`rounded-3xl overflow-hidden shadow-xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 ${image2Portrait ? 'aspect-[3/4] max-h-[85vh]' : 'aspect-[16/10]'}`}>
+          <img
+            src={service.image2}
+            alt={service.title}
+            onLoad={e => setImage2Portrait(e.currentTarget.naturalHeight > e.currentTarget.naturalWidth)}
+            className="w-full h-full object-contain"
+          />
         </div>
       )}
 

@@ -69,11 +69,11 @@ export const ServicesView: React.FC<ServicesViewProps> = ({ onSelectView, onOpen
               <Calendar className="w-4 h-4" /> Book Your Checkup Today
             </button>
           </div>
-          <div className="h-80 lg:h-auto bg-slate-100">
+          <div className="relative bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 aspect-[4/3] lg:aspect-auto lg:h-full">
             <img
               src="https://static.wixstatic.com/media/02c124_60a2010b82774175b3cb5ea61d6bbd9f~mv2.jpg"
               alt="First Avenue Dentistry Dental Services"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>

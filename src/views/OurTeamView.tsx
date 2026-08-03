@@ -25,8 +25,8 @@ export const OurTeamView: React.FC<OurTeamViewProps> = ({ onSelectView, onOpenBo
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80">
-          <img src="https://static.wixstatic.com/media/2a5871_1342019f2be947ecbb2fb19fe827b1ec~mv2.png" alt="First Avenue Dentistry Team" className="w-full h-[400px] object-cover" />
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 aspect-[4/3]">
+          <img src="https://static.wixstatic.com/media/2a5871_1342019f2be947ecbb2fb19fe827b1ec~mv2.png" alt="First Avenue Dentistry Team" className="w-full h-full object-contain" />
         </div>
         <div className="space-y-4">
           <p className="text-sm text-slate-600 leading-relaxed">
@@ -60,8 +60,8 @@ export const OurTeamView: React.FC<OurTeamViewProps> = ({ onSelectView, onOpenBo
             Our team of dental care experts is committed to excellence and goes beyond just emergency care; we offer a wide range of services encompassing family dentistry and cosmetic dentistry to ensure every aspect of your dental health is addressed with compassion.
           </p>
         </div>
-        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80">
-          <img src="https://static.wixstatic.com/media/2a5871_9aae709b6d1d4239804b63ca3a3aa2cd~mv2.png" alt="Dentist with patient" className="w-full h-[400px] object-cover" />
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 aspect-[4/3]">
+          <img src="https://static.wixstatic.com/media/2a5871_9aae709b6d1d4239804b63ca3a3aa2cd~mv2.png" alt="Dentist with patient" className="w-full h-full object-contain" />
         </div>
       </div>
 
