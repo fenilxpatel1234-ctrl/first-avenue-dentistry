@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Tailwind v4 preflight no longer gives buttons a pointer cursor; restore it for all interactive elements */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+a[href],
+select,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+summary {
+  cursor: pointer;
+}
