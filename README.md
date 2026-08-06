@@ -4,10 +4,6 @@
 
 # Run and deploy your website by fenil
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/5111fc03-44c0-4d01-8222-eafae04b97f8
-
 ## Run Locally
 
 **Prerequisites:**  Node.js
