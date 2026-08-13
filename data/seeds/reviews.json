@@ -1,5 +1,29 @@
 [
   {
+    "id": "rev-google-1",
+    "authorName": "Google User",
+    "rating": 5,
+    "text": "Dr. Patel and staff offer first rate professional dental care!",
+    "source": "Google",
+    "createdAt": "2026-08-05T10:00:00.000Z"
+  },
+  {
+    "id": "rev-google-2",
+    "authorName": "Google User",
+    "rating": 5,
+    "text": "Amazing service and nice people good place to be",
+    "source": "Google",
+    "createdAt": "2026-07-28T10:00:00.000Z"
+  },
+  {
+    "id": "rev-google-3",
+    "authorName": "Google User",
+    "rating": 5,
+    "text": "Amazing experience very fast service for cavity fillings.",
+    "source": "Google",
+    "createdAt": "2026-07-21T10:00:00.000Z"
+  },
+  {
     "id": "rev-sample-1",
     "authorName": "Emily R.",
     "rating": 5,
