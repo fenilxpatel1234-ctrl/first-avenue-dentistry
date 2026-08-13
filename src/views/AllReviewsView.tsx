@@ -106,7 +106,7 @@ export const AllReviewsView: React.FC<{ onSelectView: (view: PageView) => void }
   const average = reviews.reduce((s, r) => s + r.rating, 0) / total;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-16 sm:pt-36 sm:pb-20">
       {/* Breadcrumb */}
       <button
         onClick={() => onSelectView('home')}
