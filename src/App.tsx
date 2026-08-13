@@ -13,6 +13,7 @@ import { BookOnlineView } from './views/BookOnlineView';
 import { OurTeamView } from './views/OurTeamView';
 import { ContactUsView } from './views/ContactUsView';
 import { BlogView } from './views/BlogView';
+import { AllReviewsView } from './views/AllReviewsView';
 import { EmergencyView } from './views/EmergencyView';
 import { LegalView } from './views/LegalView';
 import { AdminView } from './views/AdminView';
@@ -32,6 +33,7 @@ export default function App() {
       'reset-password': 'reset-password',
       'home': 'home', 'services': 'services', 'book-online': 'book-online', 'emergency': 'emergency',
       'our-team': 'our-team', 'contact-us': 'contact-us', 'blog': 'blog',
+      'reviews': 'reviews',
       'legal': 'legal', 'service-detail': 'service-detail'
     };
     const hash = window.location.hash.replace('#', '').split('?')[0];
@@ -109,6 +111,8 @@ export default function App() {
         return <ContactUsView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
       case 'blog':
         return <BlogView onSelectView={handleSelectView} onOpenBooking={() => handleOpenBooking()} />;
+      case 'reviews':
+        return <AllReviewsView onSelectView={handleSelectView} />;
       case 'legal':
         return <LegalView onSelectView={handleSelectView} />;
       case 'reset-password':

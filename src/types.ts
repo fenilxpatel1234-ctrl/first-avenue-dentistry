@@ -7,6 +7,7 @@ export type PageView =
   | 'our-team'
   | 'contact-us'
   | 'blog'
+  | 'reviews'
   | 'legal'
   | 'admin'
   | 'reset-password';

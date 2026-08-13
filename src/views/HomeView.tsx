@@ -206,7 +206,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onSelectView, onOpenBooking,
       </section>
 
       {/* PATIENT REVIEWS */}
-      <ReviewsSection />
+      <ReviewsSection onSelectView={onSelectView} />
 
       {/* LOCATION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

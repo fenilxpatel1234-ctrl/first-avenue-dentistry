@@ -1,37 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Quote, BadgeCheck } from 'lucide-react';
+import { Quote, ArrowRight, BadgeCheck } from 'lucide-react';
+import { PageView, SiteReview } from '../types';
+import { ReviewCard, Stars } from './ReviewCard';
 
-interface SiteReview {
-  id: string;
-  authorName: string;
-  rating: number;
-  text: string;
-  source?: string;
-  createdAt: string;
-}
-
-function Stars({ rating, size = 'w-4 h-4' }: { rating: number; size?: string }) {
-  return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`${size} ${i <= Math.round(rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-300 fill-slate-200'}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
-}
-
-export const ReviewsSection: React.FC = () => {
+export const ReviewsSection: React.FC<{ onSelectView: (view: PageView) => void }> = ({ onSelectView }) => {
   const [reviews, setReviews] = useState<SiteReview[] | null>(null);
 
   useEffect(() => {
@@ -55,6 +27,7 @@ export const ReviewsSection: React.FC = () => {
 
   const total = reviews.length;
   const average = reviews.reduce((sum, r) => sum + r.rating, 0) / total;
+  const preview = reviews.slice(0, 6);
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,33 +58,19 @@ export const ReviewsSection: React.FC = () => {
 
         {/* Review cards */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {reviews.map((review) => (
-            <div
-              key={review.id}
-              className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-lg hover:shadow-xl transition-all flex flex-col space-y-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center font-bold text-sm">
-                  {review.authorName.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-slate-900 text-sm truncate flex items-center gap-1.5">
-                    {review.authorName}
-                    <BadgeCheck className="w-4 h-4 text-blue-600 shrink-0" />
-                  </div>
-                  <div className="text-[11px] text-slate-400">{formatDate(review.createdAt)}</div>
-                </div>
-                {review.source && (
-                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 shrink-0">
-                    {review.source}
-                  </span>
-                )}
-              </div>
-              <Stars rating={review.rating} />
-              <p className="text-xs text-slate-600 leading-relaxed flex-1 line-clamp-5">{review.text}</p>
-            </div>
+          {preview.map((review) => (
+            <ReviewCard key={review.id} review={review} clamp />
           ))}
         </div>
+      </div>
+
+      <div className="mt-10 text-center">
+        <button
+          onClick={() => onSelectView('reviews')}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-blue-600 text-blue-700 font-bold text-sm hover:bg-blue-600 hover:text-white transition-colors"
+        >
+          View all {total} reviews <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </section>
   );
